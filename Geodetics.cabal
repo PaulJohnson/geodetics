@@ -1,0 +1,38 @@
+name:           Geodetics
+version:        0.1
+cabal-version:  >= 1.2
+build-type:     Simple
+author:         Paul Johnson <paul@cogito.org.uk>
+
+library
+  hs-source-dirs:  src
+  build-depends:   
+                   base >= 4,
+                   dimensional == 0.10.*,
+                   array >= 0.4
+  ghc-options:     -Wall
+  exposed-modules: 
+                   Geodetics.Coordinates,
+                   Geodetics.Ellipsoids,
+                   Geodetics.UK
+
+test-suite GeodeticTest
+  type:            exitcode-stdio-1.0
+  main-is:         Main.hs
+  x-uses-tf:       true
+  build-depends:   
+                   base >= 4,
+                   HUnit >= 1.2 && < 2,
+                   QuickCheck >= 2.4,
+                   test-framework >= 0.4.1,
+                   test-framework-quickcheck2,
+                   test-framework-hunit,
+                   array >= 0.4
+  hs-source-dirs:  
+                   src, 
+                   test
+  ghc-options:     -Wall -rtsopts
+  other-modules:   
+                   ArbitraryInstances,
+                   Main
+
