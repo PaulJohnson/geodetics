@@ -5,8 +5,7 @@ module Geodetics.UK (
    OSGB36 (..),
    UkNationalGrid (..),
    fromUkGridReference,
-   ukTrueOrigin,
-   ukFalseOrigin,
+   ukGrid,
    fromUkGridLetters,
    fromUkGridDigits,
    toUkGridReference
@@ -16,11 +15,13 @@ import Control.Applicative
 import Data.Array
 import Data.Char
 import Data.Monoid
+import Geodetics.Geodetic
+import Geodetics.Grid
+import Geodetics.Ellipsoids
+import Geodetics.TransverseMercator
 import Numeric.Units.Dimensional.Prelude
 import qualified Prelude as P
 
-import Geodetics.Coordinates
-import Geodetics.Ellipsoids
 
 
 -- | Ellipsoid definition for Great Britain. Airy 1830 offset from the centre of the Earth 
@@ -42,31 +43,21 @@ instance Ellipsoid OSGB36 where
       rX = 0.1502 *~ arcsecond, rY = 0.247 *~ arcsecond, rZ = 0.8421 *~ arcsecond }
 
 
--- | The UK National is a Transverse Mercator projection with a true origin at
--- 42 degrees North, 2 degrees West on OSGB36, and a false origin 400km West and 100 km North of
--- the true origin. The scale factor is 0.9996012717.
+-- | The UK National Grid is a Transverse Mercator projection with a true origin at
+-- 49 degrees North, 2 degrees West on OSGB36, and a false origin 400km West and 100 km North of
+-- the true origin. The scale factor is defined as @10**(0.9998268 - 1)@.
 data UkNationalGrid = UkNationalGrid deriving (Eq, Show)
 
 instance GridClass UkNationalGrid OSGB36 where
-   toGrid _ = fromPrivateGrid . toGrid ukGrid
-   fromGrid = fromGrid . toPrivateGrid
+   toGrid _ = unsafeGridCoerce UkNationalGrid . toGrid ukGrid
+   fromGrid = fromGrid . unsafeGridCoerce ukGrid
    gridEllipsoid _ = OSGB36
-
-
--- ------------------------------------------------------------------------------
--- Private definitions used in the instance of UkNationalGrid.
-
-toPrivateGrid :: GridPoint UkNationalGrid -> GridPoint (GridTM OSGB36)
-toPrivateGrid p = GridPoint (eastings p) (northings p) (altitude p) ukGrid
-
-fromPrivateGrid :: GridPoint (GridTM OSGB36) -> GridPoint UkNationalGrid
-fromPrivateGrid p = GridPoint (eastings p) (northings p) (altitude p) UkNationalGrid
 
 
 
 ukTrueOrigin :: Geodetic OSGB36
 ukTrueOrigin = Geodetic {
-   latitude = 42 *~ degree,
+   latitude = 49 *~ degree,
    longitude = (-2) *~ degree,
    geoAlt = 0 *~ meter,
    ellipsoid = OSGB36
@@ -75,8 +66,11 @@ ukTrueOrigin = Geodetic {
 ukFalseOrigin :: GridOffset 
 ukFalseOrigin = GridOffset (400 *~ kilo meter) ((-100) *~ kilo meter) (0 *~ meter)
 
+
+-- | Numerical definition of the UK national grid.
 ukGrid :: GridTM OSGB36
-ukGrid = mkGridTM ukTrueOrigin ukFalseOrigin (0.9996012717 *~ one)
+ukGrid = mkGridTM ukTrueOrigin ukFalseOrigin 
+   ((10 *~ one) ** (0.9998268 *~ one - _1))
 
 
 -- | Convert a grid reference to a position, if the reference is valid. 

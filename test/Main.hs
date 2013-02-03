@@ -14,8 +14,11 @@ import Test.Framework.Providers.QuickCheck2 (testProperty)
 import qualified Test.HUnit as HU 
 
 import ArbitraryInstances
-import Geodetics.Coordinates
+import Geodetics.Altitude
+import Geodetics.Geodetic
+import Geodetics.Grid
 import Geodetics.Ellipsoids
+import Geodetics.TransverseMercator
 import Geodetics.UK
 
 
@@ -174,16 +177,10 @@ ukGridTest4 (_, gp, geo, name) = testCase name $ HU.assertBool ""
 -- | Check that WGS84 to grid point works close enough for sample points.
 ukGridTest5 :: GridPointTest
 ukGridTest5 (_, gp, geo, name) = testCase name $ HU.assertBool ""
-   $ offsetDistance (gridOffset gp $ toGrid UkNationalGrid $ toLocal OSGB36 geo) < 10 *~ meter
-
--- Some sample values for ad-hoc tests
-e :: LocalEllipsoid
-e = LocalE {nameLocal = "Local_FQN", majorRadiusLocal = 6378349.238479761 *~ meter, flatRLocal = 297.1206701694604 *~ one, helmertLocal = Helmert {cX = 49.0 *~ meter, cY = 86.0 *~ meter, cZ = 50.0 *~ meter, helmertScale = 4.0 *~ one, rX = 2e-4 *~ one, rY = 2.827464643683094e-4 *~ one, rZ = (-3e-4) *~ one}}
-
-pA = Geodetic (1 *~ degree) (51 *~ degree) (0 *~ meter) e
+   $ offsetDistance (gridOffset gp $ toGrid UkNationalGrid $ toLocal OSGB36 geo) < 1 *~ meter
 
 
--- Worked example for UK Geodetic to GridPoint, taken from "A Guide to Coordinate Systems in Great Britain"
+-- | Worked example for UK Geodetic to GridPoint, taken from "A Guide to Coordinate Systems in Great Britain" [1]
 
 ukTest :: Geodetic OSGB36
 ukTest = Geodetic (dms 52 39 27.2531) (dms 1 43 4.5177) (0 *~ meter) OSGB36

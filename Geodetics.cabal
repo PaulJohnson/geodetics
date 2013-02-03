@@ -12,9 +12,12 @@ library
                    array >= 0.4
   ghc-options:     -Wall
   exposed-modules: 
-                   Geodetics.Coordinates,
                    Geodetics.Ellipsoids,
-                   Geodetics.UK
+                   Geodetics.UK,
+                   Geodetics.Geodetic,
+                   Geodetics.Altitude,
+                   Geodetics.Grid,
+                   Geodetics.TransverseMercator
 
 test-suite GeodeticTest
   type:            exitcode-stdio-1.0
@@ -34,5 +37,9 @@ test-suite GeodeticTest
   ghc-options:     -Wall -rtsopts
   other-modules:   
                    ArbitraryInstances,
-                   Main
+                   Main,
+                   Geodetics.Geodetic,
+                   Geodetics.Altitude,
+                   Geodetics.Grid,
+                   Geodetics.TransverseMercator
 

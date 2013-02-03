@@ -6,12 +6,14 @@ module ArbitraryInstances where
 
 import Control.Applicative
 import Control.Monad
-import Test.QuickCheck
+import Geodetics.Altitude
+import Geodetics.Geodetic
+import Geodetics.Grid
+import Geodetics.Ellipsoids
+import Geodetics.TransverseMercator
 import Numeric.Units.Dimensional.Prelude
 import qualified Prelude as P
-
-import Geodetics.Coordinates
-import Geodetics.Ellipsoids
+import Test.QuickCheck
 
 
 -- | Wrapper for arbitrary angles.
@@ -121,7 +123,7 @@ instance (Ellipsoid e, Arbitrary e) => Arbitrary (GridPoint (GridTM e)) where
       shrinkLength (eastings p) <*> 
       shrinkLength (northings p) <*> 
       shrinkLength (altitude p) <*> 
-      shrink' (gridBase p)
+      shrink' (gridBasis p)
 
 
 instance (Ellipsoid e, Arbitrary e) => Arbitrary (GridTM e) where

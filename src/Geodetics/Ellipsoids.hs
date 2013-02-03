@@ -47,7 +47,10 @@ applyHelmert h (x,y,z) = (
 
 
 -- | An Ellipsoid is defined by the major radius and the inverse flattening (which define its shape), 
--- and its Helmert transform with respect to WGS84 (which defines its position and orientation).
+-- and its Helmert transform relative to WGS84 (which defines its position and orientation).
+--
+-- The inclusion of the Helmert parameters relative to WGS84 actually make this a Terrestrial 
+-- Reference Frame (TRF), but the term "Ellipsoid" will be used in this library for readability.
 --
 -- Minimum definition: @majorRadius@, @flatR@ & @helmert@.
 -- 
@@ -58,6 +61,7 @@ applyHelmert h (x,y,z) = (
 class (Show a, Eq a) => Ellipsoid a where
    majorRadius :: a -> Length Double
    flatR :: a -> Dimensionless Double
+      -- ^ Inverse of the flattening.
    helmert :: a -> Helmert
    helmertToWSG84 :: a -> ECEF -> ECEF
       -- ^ The Helmert transform that will convert a position wrt 
