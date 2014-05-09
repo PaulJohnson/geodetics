@@ -3,12 +3,25 @@ version:        0.1
 cabal-version:  >= 1.2
 build-type:     Simple
 author:         Paul Johnson <paul@cogito.org.uk>
+data-files:     ToDo.txt
+tested-with:    GHC==7.4.2
+license:        BSD3
+copyright:      Paul Johnson 2014.
+synopsis:       Terrestrial coordinate systems and associated calculations.
+description:    Precise geographical coordinates (latitude & longitude), with conversion between
+                different reference frames.
+                .
+                Transverse Mercator grids.
+                .
+                Certain "priviledged" reference frames and grids are given distinct
+                types so that coordinates expressed within them are distinguished 
+                from coordinates in other frames.
 
 library
   hs-source-dirs:  src
   build-depends:   
                    base >= 4,
-                   dimensional == 0.10.*,
+                   dimensional == 0.13.*,
                    array >= 0.4
   ghc-options:     -Wall
   exposed-modules: 
@@ -18,6 +31,7 @@ library
                    Geodetics.Altitude,
                    Geodetics.Grid,
                    Geodetics.TransverseMercator
+  other-modules:   Geodetics.Path
 
 test-suite GeodeticTest
   type:            exitcode-stdio-1.0
@@ -41,5 +55,6 @@ test-suite GeodeticTest
                    Geodetics.Geodetic,
                    Geodetics.Altitude,
                    Geodetics.Grid,
-                   Geodetics.TransverseMercator
+                   Geodetics.TransverseMercator,
+                   Geodetics.Path
 

@@ -10,14 +10,15 @@ import Test.Framework.Options (TestOptions, TestOptions'(..))
 import Test.Framework.Runners.Options (RunnerOptions, RunnerOptions'(..))
 import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2 (testProperty)
--- import Test.QuickCheck
-import qualified Test.HUnit as HU 
+import qualified Test.HUnit as HU
+import Test.QuickCheck
 
 import ArbitraryInstances
 import Geodetics.Altitude
+import Geodetics.Ellipsoids
 import Geodetics.Geodetic
 import Geodetics.Grid
-import Geodetics.Ellipsoids
+import Geodetics.Path
 import Geodetics.TransverseMercator
 import Geodetics.UK
 
@@ -41,6 +42,7 @@ tests = [
    testGroup "Geodetic" [
       testProperty "WGS84 and back" prop_WGS84_and_back,
       testGroup "UK Points" $ map pointTest ukPoints],
+      testGroup "World lines" $ map worldLineTests worldLines,
    testGroup "Grid" [
       testProperty "Grid Offset 1" prop_offset1,
       testProperty "Grid Offset 2" prop_offset2,
@@ -52,8 +54,20 @@ tests = [
       testGroup "UK Grid 3" $ map ukGridTest3 ukSampleGrid,
       testGroup "UK Grid 4" $ map ukGridTest4 ukSampleGrid,
       testGroup "UK Grid 5" $ map ukGridTest5 ukSampleGrid
+      ],
+   testGroup "Paths" [
+      testProperty "Ray Path 1" prop_rayPath1,
+      testProperty "Ray Continuity" prop_rayContinuity,
+      testProperty "Ray Bisection" prop_rayBisect,
+      testProperty "Rhumb Continuity" prop_rhumbContinuity,
+      testProperty "Rhumb Intersection" prop_rhumbIntersect
       ]
    ]
+
+
+-- Zero meters.
+m0 :: Length Double
+m0 = 0 *~ meter
 
 
 -- | The positions are within 30 cm.
@@ -65,6 +79,10 @@ samePlace p1 p2 = geometricalDistance p1 p2 < 0.3 *~ meter
 closeEnough :: (Ellipsoid e) => Geodetic e -> Geodetic e -> Bool
 closeEnough p1 p2 = geometricalDistance p1 p2 < 10 *~ meter
 
+
+-- | The angles are within 0.01 arcsec
+sameAngle :: Angle Double -> Angle Double -> Bool
+sameAngle v1 v2 = abs (properAngle (v1 - v2)) < 0.01 *~ arcsecond
 
 -- | The grid positions are within 1mm
 sameGrid :: (GridClass r e) => GridPoint r -> GridPoint r -> Bool
@@ -82,10 +100,32 @@ sameOffset go1 go2 = check deltaNorth && check deltaEast && check deltaAltitude
 dms :: Int -> Int -> Double -> Dimensionless Double
 dms d m s = fromIntegral d *~ degree + fromIntegral m *~ arcminute + s *~ arcsecond
 
--- | Round-trip is identity (approximately)
+-- | Round-trip from local to WGS84 and back is identity (approximately)
 prop_WGS84_and_back :: Geodetic LocalEllipsoid -> Bool
 prop_WGS84_and_back p = samePlace p $ toLocal (ellipsoid p) $ toWGS84 p
 
+
+-- | Sample pairs of points with bearings and distances. 
+-- The Oracle for these values is the @FORWARD@ program from
+--  http://www.ngs.noaa.gov/TOOLS/Inv_Fwd/Inv_Fwd.html
+worldLines :: [(String, Geodetic WGS84, Geodetic WGS84, Length Double, Dimensionless Double, Dimensionless Double)]
+worldLines = [
+   ("Ordinary", Geodetic (40*~degree) (30*~degree) m0 WGS84, Geodetic (30*~degree) (50*~degree) m0 WGS84,
+      2128852.999*~meter, 115.19596706*~degree, 126.79044315*~degree),
+   ("Over Pole", Geodetic (60*~degree) (0*~degree) m0 WGS84, Geodetic (60*~degree) (180*~degree) m0 WGS84,
+      6695785.820*~meter, 0*~degree, 180*~degree),
+   ("Equator to Pole", Geodetic (0*~degree) (0*~degree) m0 WGS84, Geodetic (90*~degree) (180*~degree) m0 WGS84,
+      10001965.729*~meter, 0*~degree, 180*~degree)]
+   
+   
+worldLineTests :: (String, Geodetic WGS84, Geodetic WGS84, Length Double, Dimensionless Double, Dimensionless Double) -> Test
+worldLineTests (str, g1, g2, d, a, b) = testCase str $ HU.assertBool "" $ ok $ groundDistance g1 g2
+   where
+      ok Nothing = False
+      ok (Just (d1, a1, b1)) = 
+         abs (d - d1) < 0.01 *~ meter 
+         && abs (a - a1) < 0.01 *~ arcsecond 
+         && abs (b - b1) < 0.01 *~ arcsecond
 
 -- | Sample points for UK tests. The oracle for these values is the script at 
 -- http://www.movable-type.co.uk/scripts/latlong-convert-coords.html, which uses
@@ -102,7 +142,8 @@ ukPoints = [
                         Geodetic (dms 52 36 27.84) (dms 1 44 34.52) m0 OSGB36),
    ("Stanhope",         Geodetic (dms 54 44 49.08) (dms (-2) 0 (-19.89)) m0 WGS84,
                         Geodetic (dms 54 44 48.71) (dms (-2) 0 (-14.41)) m0 OSGB36) ]
-   where m0 = 0 *~ meter
+
+
 
 -- Convert a named point into a test
 pointTest :: (Ellipsoid e2) => (String, Geodetic WGS84, Geodetic e2) -> Test
@@ -129,7 +170,7 @@ prop_offset3 delta = sameOffset delta0
 -- | Given a grid point and an offset, applying the offset to the point gives a new point which
 -- is offset from the first point by the argument offset.
 prop_grid1 :: GridPoint (GridTM LocalEllipsoid) -> GridOffset -> Bool
-prop_grid1 p d = sameOffset d $ p `gridOffset` (applyOffset d p)
+prop_grid1 p d = sameOffset d $ p `gridOffset` applyOffset d p
 
 
 -- | Converting a UK grid reference to a GridPoint and back is a null operation.
@@ -181,7 +222,6 @@ ukGridTest5 (_, gp, geo, name) = testCase name $ HU.assertBool ""
 
 
 -- | Worked example for UK Geodetic to GridPoint, taken from "A Guide to Coordinate Systems in Great Britain" [1]
-
 ukTest :: Geodetic OSGB36
 ukTest = Geodetic (dms 52 39 27.2531) (dms 1 43 4.5177) (0 *~ meter) OSGB36
 
@@ -201,3 +241,80 @@ ukTest = Geodetic (dms 52 39 27.2531) (dms 1 43 4.5177) (0 *~ meter) OSGB36
    N = 313177.270 m
 -}
 
+
+-- | A ray at distance zero returns its original arguments.
+prop_rayPath1 :: Ray WGS84 -> Bool
+prop_rayPath1 r@(Ray pt b e) = 
+      samePlace pt pt1 && sameAngle b b1 && sameAngle e e1
+   where (pt1,b1,e1) = pathFunc (getRay r) m0
+
+
+type ContinuityTest e = Geodetic e -> Bearing -> Azimuth -> Distance -> Distance -> Property
+
+type ContinuityTest1 e = Geodetic e -> Bearing -> Distance2 -> Distance2 -> Property
+
+-- | Many paths can be specified by a start point, bearing and azimuth,
+-- and have the property that any (point,bearing,azimuth) triple on 
+-- the path will specify the same path with a distance offset.
+prop_pathContinuity :: (Ellipsoid e) =>
+   (Geodetic e -> Angle Double -> Angle Double -> Path e) -> ContinuityTest e
+prop_pathContinuity pf pt0 (Bearing b0) (Azimuth a0) (Distance d1) (Distance d2) =
+   printTestCase (show ((pt2, Bearing b2, Azimuth a2), (pt3, Bearing b3, Azimuth a3))) $
+      pathValidAt path0 d1 && pathValidAt path0 d2 && pathValidAt path0 (d1+d2) ==>
+      closeEnough pt2 pt3 && sameAngle b2 b3 && sameAngle a2 a3
+   where
+      path0 = pf pt0 b0 a0
+      (pt1, b1, a1) = pathFunc path0 d1
+      path1 = pf pt1 b1 a1
+      (pt2, b2, a2) = pathFunc path1 d2
+      (pt3, b3, a3) = pathFunc path0 (d1 + d2)  -- Points 2 and 3 should be the same.
+      
+
+-- | For continuity testing of ground-based paths (azimuth & altitude always zero) 
+-- where lower accuracy is required.
+prop_pathContinuity1 :: (Ellipsoid e) => (Geodetic e -> Angle Double -> Path e) -> ContinuityTest1 e
+prop_pathContinuity1 pf pt0 (Bearing b0) (Distance2 d1) (Distance2 d2) =
+   printTestCase (show ((pt2, Bearing b2), (pt3, Bearing b3))) $
+      pathValidAt path0 d1 && pathValidAt path0 d2 && pathValidAt path0 (d1+d2) ==>
+      closeEnough pt2 pt3 && sameAngle b2 b3
+   where
+      path0 = pf pt0 b0
+      (pt1, b1, _) = pathFunc path0 d1
+      path1 = pf pt1 b1
+      (pt2, b2, _) = pathFunc path1 d2
+      (pt3, b3, _) = pathFunc path0 (d1 + d2)  -- Points 2 and 3 should be the same.
+
+
+-- | A point on a ray will continue along the same ray, and hence give the same points.
+prop_rayContinuity :: ContinuityTest WGS84
+prop_rayContinuity = prop_pathContinuity rayPath 
+
+
+-- | A ray bisected to an altitude will give that altitude.
+-- This is a test of bisection rather than rays.
+prop_rayBisect :: Ray WGS84 -> Altitude -> Bool
+prop_rayBisect r (Altitude height) = 
+   case bisect ray0 f (1 *~ centi meter) (0 *~ meter) (1000 *~ kilo meter) of
+      Nothing -> False
+      Just d -> let (g, _, _) = pathFunc ray0 d in abs (altitude g - height) < 1 *~ centi meter
+   where
+      f g = compare (altitude g) height
+      ray0 = getRay r
+   
+
+-- | A point on a rhumb line will continue along the same rhumb.
+prop_rhumbContinuity :: ContinuityTest1 WGS84
+prop_rhumbContinuity = prop_pathContinuity1 rhumbPath
+
+
+-- | Two rhumb paths intersect at the same place.
+prop_rhumbIntersect :: RhumbPaths2 -> Property
+prop_rhumbIntersect rp = 
+   case intersect m0 m0 (10.0 *~ centi meter) 100 path1 path2 of
+      Just (d1, d2) ->
+         let (pt1, _, _) = pathFunc path1 d1
+             (pt2, _, _) = pathFunc path2 d2
+         in printTestCase (show (pt1, pt2)) $ samePlace pt1 pt2
+      Nothing -> printTestCase "No intersection found." False
+   where
+      (path1, path2) = mk2RhumbPaths rp

@@ -4,14 +4,13 @@
 module Geodetics.UK (
    OSGB36 (..),
    UkNationalGrid (..),
-   fromUkGridReference,
    ukGrid,
-   fromUkGridLetters,
-   fromUkGridDigits,
+   fromUkGridReference,
    toUkGridReference
 ) where
 
 import Control.Applicative
+import Control.Monad
 import Data.Array
 import Data.Char
 import Data.Monoid
@@ -73,38 +72,34 @@ ukGrid = mkGridTM ukTrueOrigin ukFalseOrigin
    ((10 *~ one) ** (0.9998268 *~ one - _1))
 
 
+-- | Size of a UK letter-pair grid square.
+ukGridSquare :: Length Double
+ukGridSquare = 100 *~ kilo meter
+
+
 -- | Convert a grid reference to a position, if the reference is valid. 
 -- This actually returns the position of the south-west corner of the nominated 
 -- grid square and an offset to its centre. Altitude is set to zero.
 fromUkGridReference :: String -> Maybe (GridPoint UkNationalGrid, GridOffset)
 fromUkGridReference str = if length str < 2 then Nothing else do
-      let c1:c2:ds = str
-      (sw1, dc) <- fromUkGridDigits ds
-      sw2 <- applyOffset sw1 <$> fromUkGridLetters c1 c2
-      return (sw2, dc)
+      let 
+         c1:c2:ds = str
+         n = length ds
+      guard $ even n
+      let (dsE, dsN) = splitAt (n `div` 2) ds
+      (east, sq) <- fromGridDigits ukGridSquare dsE
+      (north, _) <- fromGridDigits ukGridSquare dsN
+      base <- fromUkGridLetters c1 c2
+      let half = sq / (2 *~ one)
+      return (applyOffset (GridOffset east north (0 *~ meter)) base,
+              GridOffset half half (0 *~ meter))
 
       
 
 
--- | Convert an even number of digits into a pair of grid offsets. The first result
--- is the south-west corner of the square, and the second is a further offset from
--- the corner to the centre.
-fromUkGridDigits :: String -> Maybe (GridOffset, GridOffset)
-fromUkGridDigits str = do
-      let n = length str
-          halfSquare = 50 *~ kilo meter * (0.1 *~ one) ** (fromIntegral (n `div` 2) *~ one)
-      (s1,s2) <- if even n && all isDigit str then Just $ splitAt (n `div` 2) str else Nothing
-      return $ (GridOffset (grid s1) (grid s2) (0 *~ meter),
-                GridOffset halfSquare halfSquare (0 *~ meter))
-   where
-      grid :: String -> Length Double
-      grid s = sum $ zipWith (*) 
-         (map ((*~ one) . fromIntegral . digitToInt) s) 
-         (iterate (/ (10 *~ one)) (10 *~ kilo meter)) 
-
 -- | The south west corner of the nominated grid square, if it is a legal square.
 -- This function works for all pairs of letters except 'I' (as that is not used).
--- In practice only those pairs covering the UK are actually used.
+-- In practice only those pairs covering the UK are actually considered meaningful.
 fromUkGridLetters :: Char -> Char -> Maybe (GridPoint UkNationalGrid)
 fromUkGridLetters c1 c2 = applyOffset <$> (mappend <$> g1 <*> g2) <*> letterOrigin
    where
@@ -134,37 +129,17 @@ fromUkGridLetters c1 c2 = applyOffset <$> (mappend <$> g1 <*> g2) <*> letterOrig
 toUkGridReference :: Int -> GridPoint UkNationalGrid -> Maybe String
 toUkGridReference n p
    | n < 0         = error "toUkGridReference: precision argument must not be negative."
-   | n > 5         = error "toUkGridReference: precision argument must be <= 5."
-   | not griddable = Nothing 
-   | otherwise     = Just $ c1 : c2 : paddedShow dx ++ paddedShow dy
+   | otherwise     = do
+      (gx, strEast) <- toGridDigits ukGridSquare n $ eastings p + 1000 *~ kilo meter
+      (gy, strNorth) <- toGridDigits ukGridSquare n $ northings p + 500 *~ kilo meter
+      let (gx1, gx2) = (fromIntegral gx) `divMod` 5
+          (gy1, gy2) = (fromIntegral gy) `divMod` 5
+      guard (gx1 < 5 && gy1 < 5)
+      let c1 = gridSquare gx1 gy1
+          c2 = gridSquare gx2 gy2
+      return $ c1 : c2 : strEast ++ strNorth
    where
-      griddable = and [
-         vx >= 0,
-         vx < 2500000,
-         vy >= 0,
-         vy < 2500000]
-      precI :: Integer
-      precI = 100000 `div` (10 P.^ n)
-      coord :: Length Double -> (Int, Int, Integer, Integer)
-      coord v = (fromIntegral g1, fromIntegral g2, v1, v2)
-         where
-            -- v: Distance north or east from VV000000 (most southwesterly griddable point).
-            -- v1: v rounded to grid precision, in integer meters.
-            -- v2: Northing or easting of v1 within grid square.
-            -- g2: Base of grid square below d, for second letter.
-            -- g1: Base of larger (5x5) grid square, for first letter.
-            v1 = round ((v /~ meter) P./ fromIntegral precI) P.* precI
-            (g,  v2) = v1 `divMod` 100000
-            (g1, g2) = g `divMod` 5
-      (gx1,gx2,vx,dx) = coord $ eastings p + 1000 *~ kilo meter
-      (gy1,gy2,vy,dy) = coord $ northings p + 500 *~ kilo meter
-      c1 = gridSquare gx1 gy1
-      c2 = gridSquare gx2 gy2
       gridSquare x y = letters ! (4 P.- y, x)
       letters :: Array (Int, Int) Char
       letters = listArray ((0,0),(4,4)) $ ['A'..'H'] ++ ['J'..'Z']
-      paddedShow d = take n $ replicate (5 P.- length s) '0' ++ s
-         where s = show d
-
-      
    

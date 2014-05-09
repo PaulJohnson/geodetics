@@ -15,9 +15,13 @@ module Geodetics.Grid (
    offsetBearing,
    gridOffset,
    -- ** Unsafe Conversion
-   unsafeGridCoerce
+   unsafeGridCoerce,
+   -- ** Utility Functions for grid references
+   fromGridDigits,
+   toGridDigits
 ) where
 
+import Data.Char
 import Data.Function
 import Data.Monoid
 import Geodetics.Altitude
@@ -63,7 +67,7 @@ data GridOffset = GridOffset {
    deltaEast, deltaNorth, deltaAltitude :: Length Double
 } deriving (Eq, Show)
 
-instance Monoid GridOffset where
+instance Monoid GridOffset where   -- ^ Sum of offsets.
    mempty = GridOffset (0 *~ meter) (0 *~ meter) (0 *~ meter)
    mappend g1 g2 = GridOffset (deltaEast g1 + deltaEast g2) 
                               (deltaNorth g1 + deltaNorth g2) 
@@ -71,9 +75,9 @@ instance Monoid GridOffset where
 
 -- | An offset defined by a distance and a bearing to the right of North.
 --
--- There is no elevation parameter because this does not provide
--- useful results because we are using a plane to approximate a sphere,
--- and the 
+-- There is no elevation parameter because we are using a plane to approximate an ellipsoid,
+-- so elevation would not provide a useful result.  If you want to work with elevations
+-- then "rayPath" will give meaningful results.
 polarOffset :: Length Double -> Dimensionless Double -> GridOffset
 polarOffset r d = GridOffset (r * sin d) (r * cos d) (0 *~ meter)
 
@@ -126,7 +130,53 @@ gridOffset p1 p2 = GridOffset (eastings p2 - eastings p1)
 -- but with the same easting, northing and altitude. This is unsafe because it
 -- will produce a different position unless the two grids are actually equal.
 --
--- It should be used only to convert between priviledged grids (e.g. "UkNationalGrid") and
+-- It should be used only to convert between privileged grids (e.g. "UkNationalGrid") and
 -- their equivalent numerical definitions.
 unsafeGridCoerce :: b -> GridPoint a -> GridPoint b
 unsafeGridCoerce base p = GridPoint (eastings p) (northings p) (altitude p) base
+
+
+
+-- | Convert a list of digits to a distance. The first argument is the size of the
+-- grid square within which these digits specify a position. The first digit is
+-- in units of one tenth of the grid square, the second one hundredth, and so on.
+-- The first result is the lower limit of the result, and the second is the size
+-- of the specified offset.
+-- So for instance @fromGridDigits (100 *~ kilo meter) "237"@ will return
+--
+-- > Just (23700 meters, 100 meters)
+--
+-- If there are any non-digits in the string then the function returns @Nothing@.
+fromGridDigits :: Length Double -> String -> Maybe (Length Double, Length Double)
+fromGridDigits sq ds = if all isDigit ds then Just (d, p) else Nothing
+   where
+      n = length ds
+      d = sum $ zipWith (*) 
+         (map ((*~ one) . fromIntegral . digitToInt) ds) 
+         (tail $ iterate (/ (10 *~ one)) sq)
+      p = sq / ((10 *~ one) ** (fromIntegral n *~ one))
+      
+-- | Convert a distance into a digit string suitable for printing as part
+-- of a grid reference. The result is the nearest position to the specified
+-- number of digits, expressed as an integer count of squares and a string of digits.
+-- If any arguments are invalid then @Nothing@ is returned.
+toGridDigits ::
+   Length Double    -- ^ Size of enclosing grid square. Must be at least 1 km.
+   -> Int           -- ^ Number of digits to return. Must be positive.
+   -> Length Double -- ^ Offset to convert into grid.
+   -> Maybe (Integer, String)
+toGridDigits sq n d =
+   if sq < (1 *~ kilo meter) || n < 0 || d < (0 *~ meter) 
+   then Nothing
+   else
+      Just (sqs, pad)
+   where
+      p :: Integer
+      p = 10 P.^ n
+      unit :: Length Double
+      unit = sq / (fromIntegral p *~ one)
+      u = round ((d / unit) /~ one)
+      (sqs, d1) = u `divMod` p
+      s = show d1
+      pad = if n == 0 then "" else replicate (n P.- length s) '0' ++ s
+      
