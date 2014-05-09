@@ -1,5 +1,5 @@
 name:           Geodetics
-version:        0.1
+version:        0.0.1
 cabal-version:  >= 1.2
 build-type:     Simple
 author:         Paul Johnson <paul@cogito.org.uk>
