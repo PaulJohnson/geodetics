@@ -30,9 +30,9 @@ library
                    Geodetics.Geodetic,
                    Geodetics.Grid,
                    Geodetics.Path,
+                   Geodetics.Stereographic,
                    Geodetics.TransverseMercator,
                    Geodetics.UK
-  other-modules:   Geodetics.Stereographic
 
 test-suite GeodeticTest
   type:            exitcode-stdio-1.0
