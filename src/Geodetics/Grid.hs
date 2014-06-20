@@ -55,7 +55,7 @@ instance Eq (GridPoint r) where
       altGP p1 == altGP p2
 
 instance HasAltitude (GridPoint g) where
-   altitude gp = altGP gp
+   altitude = altGP
    setAltitude h gp = gp{altGP = h}
 
 

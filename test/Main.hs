@@ -19,6 +19,7 @@ import Geodetics.Ellipsoids
 import Geodetics.Geodetic
 import Geodetics.Grid
 import Geodetics.Path
+import Geodetics.Stereographic
 import Geodetics.TransverseMercator
 import Geodetics.UK
 
@@ -55,12 +56,19 @@ tests = [
       testGroup "UK Grid 4" $ map ukGridTest4 ukSampleGrid,
       testGroup "UK Grid 5" $ map ukGridTest5 ukSampleGrid
       ],
+   testGroup "Stereographic" [
+      testCase "toGrid north" $ HU.assertBool "" stereographicToGridN,
+      testCase "fromGrid north" $ HU.assertBool "" stereographicFromGridN,
+      testCase "toGrid south" $ HU.assertBool "" stereographicToGridS,
+      testCase "fromGrid south" $ HU.assertBool "" stereographicFromGridS
+      --  testProperty "Stereographic round trip" prop_stereographic
+      ],
    testGroup "Paths" [
       testProperty "Ray Path 1" prop_rayPath1,
       testProperty "Ray Continuity" prop_rayContinuity,
       testProperty "Ray Bisection" prop_rayBisect,
-      testProperty "Rhumb Continuity" prop_rhumbContinuity,
-      testProperty "Rhumb Intersection" prop_rhumbIntersect
+      testProperty "Rhumb Continuity" prop_rhumbContinuity
+      -- testProperty "Rhumb Intersection" prop_rhumbIntersect
       ]
    ]
 
@@ -240,6 +248,64 @@ ukTest = Geodetic (dms 52 39 27.2531) (dms 1 43 4.5177) (0 *~ meter) OSGB36
    E = 651409.903 m
    N = 313177.270 m
 -}
+
+
+-- | Standard stereographic grid for point tests in the Northern Hemisphere.
+stereoGridN :: GridStereo LocalEllipsoid
+stereoGridN = mkGridStereo tangent origin (0.9999079 *~ one)
+   where
+      ellipse = LocalEllipsoid "Bessel 1841" (6377397.155 *~ metre) (299.15281 *~ one) mempty
+      tangent = Geodetic (dms 52 9 22.178) (dms 5 23 15.500) (0 *~ meter) ellipse
+      origin = GridOffset (155000 *~ metre) (463000 *~ metre) (0 *~ meter)
+      
+      
+-- | Standard steregraphic grid for point tests in the Southern Hemisphere.
+-- 
+-- This is the same as stereoGridN but with the tangent latitude and the false origin northings negated. 
+stereoGridS :: GridStereo LocalEllipsoid
+stereoGridS = mkGridStereo tangent origin (0.9999079 *~ one)
+   where
+      ellipse = LocalEllipsoid "Bessel 1841" (6377397.155 *~ metre) (299.15281 *~ one) mempty
+      tangent = Geodetic (negate $ dms 52 9 22.178) (dms 5 23 15.500) (0 *~ meter) ellipse
+      origin = GridOffset ((-155000) *~ metre) (463000 *~ metre) (0 *~ meter)
+
+
+-- | Data for the stereographic tests taken from http://ftp.stu.edu.tw/BSD/NetBSD/pkgsrc/distfiles/epsg-6.11/G7-2.pdf
+stereographicToGridN :: Bool
+stereographicToGridN = sameGrid g1 g1'
+   where
+      p1 = Geodetic (dms 53 0 0) (dms 6 0 0) (0 *~ meter) $ gridEllipsoid stereoGridN 
+      g1 = GridPoint (196105.283 *~ meter) (557057.739 *~ meter) (0 *~ meter) stereoGridN
+      g1' = toGrid stereoGridN p1
+
+stereographicFromGridN :: Bool
+stereographicFromGridN = samePlace p1 p1'
+   where
+      p1 = Geodetic (dms 53 0 0) (dms 6 0 0) (0 *~ meter) $ gridEllipsoid stereoGridN
+      g1 = GridPoint (196105.283 *~ meter) (557057.739 *~ meter) (0 *~ meter) stereoGridN
+      p1' = fromGrid g1      
+
+
+stereographicToGridS :: Bool
+stereographicToGridS = sameGrid g1 g1'
+   where
+      p1 = Geodetic (negate $ dms 53 0 0) (dms 6 0 0) (0 *~ meter) $ gridEllipsoid stereoGridS
+      g1 = GridPoint ((-196105.283) *~ meter) (557057.739 *~ meter) (0 *~ meter) stereoGridS
+      g1' = toGrid stereoGridS p1
+
+
+stereographicFromGridS :: Bool
+stereographicFromGridS = samePlace p1 p1'
+   where
+      p1 = Geodetic (negate $ dms 53 0 0) (dms 6 0 0) (0 *~ meter) $ gridEllipsoid stereoGridS
+      g1 = GridPoint ((-196105.283) *~ meter) (557057.739 *~ meter) (0 *~ meter) stereoGridS
+      p1' = fromGrid g1 
+
+
+-- | Check the round trip for a stereographic projection.
+prop_stereographic :: GridPoint (GridStereo LocalEllipsoid) -> Bool
+prop_stereographic p = sameGrid p $ toGrid (gridBasis p) $ fromGrid p 
+
 
 
 -- | A ray at distance zero returns its original arguments.

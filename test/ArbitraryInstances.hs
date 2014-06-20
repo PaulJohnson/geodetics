@@ -12,7 +12,8 @@ import Geodetics.Geodetic
 import Geodetics.Grid
 import Geodetics.Ellipsoids
 import Geodetics.Path
-import Geodetics.TransverseMercator
+import Geodetics.Stereographic as SG
+import Geodetics.TransverseMercator as TM
 import Numeric.Units.Dimensional.Prelude
 import qualified Prelude as P
 import Test.QuickCheck
@@ -144,11 +145,11 @@ instance Arbitrary WGS84 where
 
 instance Arbitrary LocalEllipsoid where
    arbitrary =
-      LocalE <$> (("Local_" ++) <$> replicateM 3 (choose ('A','Z'))) <*>  -- name
+      LocalEllipsoid <$> (("Local_" ++) <$> replicateM 3 (choose ('A','Z'))) <*>  -- name
          ((*~ meter) <$> choose (6378100, 6378400)) <*>                  -- majorRadius
          ((*~ one) <$> choose (297,300)) <*>                             -- flatR
          arbitrary                                                       -- helmert
-   shrink e = tail $ LocalE (nameLocal e) (majorRadius e) (flatR e) <$> shrink' (helmert e)
+   shrink e = tail $ LocalEllipsoid (nameLocal e) (majorRadius e) (flatR e) <$> shrink' (helmert e)
 
         
 instance (Ellipsoid e, Arbitrary e) => Arbitrary (Geodetic e) where
@@ -167,15 +168,30 @@ instance (Ellipsoid e, Arbitrary e) => Arbitrary (GridPoint (GridTM e)) where
       shrink' (gridBasis p)
 
 
+instance (Ellipsoid e, Arbitrary e) => Arbitrary (GridPoint (GridStereo e)) where
+   arbitrary = GridPoint <$> genOffset 100000 <*> genOffset 100000 <*> genOffset 1 <*> arbitrary
+   shrink p = tail $ GridPoint <$> 
+      shrinkLength (eastings p) <*> 
+      shrinkLength (northings p) <*> 
+      shrinkLength (altitude p) <*> 
+      shrink' (gridBasis p)
+
+
 instance (Ellipsoid e, Arbitrary e) => Arbitrary (GridTM e) where
    arbitrary = mkGridTM <$> arbitrary <*> arbitrary <*> ((*~ one) <$> choose (0.95,1.0))
-   shrink tm = tail $ mkGridTM <$> shrink' (trueOrigin tm) <*> shrink' (falseOrigin tm) <*> [gridScale tm]
+   shrink tm = tail $ mkGridTM <$> shrink' (trueOrigin tm) <*> shrink' (falseOrigin tm) <*> [TM.gridScale tm]
+   
    
 instance Arbitrary GridOffset where
    arbitrary = GridOffset <$> genOffset 100000 <*> genOffset 100000 <*> genAlt
    shrink d = tail $ GridOffset <$> 
       shrinkLength (deltaEast d) <*> shrinkLength (deltaNorth d) <*> shrinkLength (deltaAltitude d)
 
+
+instance (Ellipsoid e, Arbitrary e) => Arbitrary (GridStereo e) where
+   arbitrary = mkGridStereo <$> arbitrary <*> arbitrary <*> ((*~ one) <$> choose (0.95,1.0))
+   shrink sg = tail $ mkGridStereo <$> shrink' (gridTangent sg) <*> shrink' (gridOrigin sg) <*> [SG.gridScale sg]
+   
 
 -- | Wrapper for arbitrary rays, along with creation parameters for printing and shrinking.
 data Ray e = Ray (Geodetic e) (Angle Double) (Angle Double)

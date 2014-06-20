@@ -28,9 +28,12 @@ module Geodetics.Ellipsoids (
    minorRadius,
    eccentricity2,
    eccentricity'2,
+   -- * Auxiliary Latitudes and Related Values
    normal,
    latitudeRadius,
-   meridianRadius
+   meridianRadius,
+   primeVerticalRadius,
+   isometricLatitude
 ) where
 
 import Data.Monoid
@@ -111,9 +114,9 @@ type ECEF = Vec3 (Length Double)
 -- | Apply a Helmert transformation to earth-centered coordinates.
 applyHelmert:: Helmert -> ECEF -> ECEF
 applyHelmert h (x,y,z) = (
-      cX h + s * (                  x - rZ h * y + rY h * z),
-      cY h + s * (          rZ h  * x +        y - rX h * z),
-      cZ h + s * ((negate $ rY h) * x + rX h * y +        z))
+      cX h + s * (                x - rZ h * y + rY h * z),
+      cY h + s * (        rZ h  * x +        y - rX h * z),
+      cZ h + s * (negate (rY h) * x + rX h * y +        z))
    where
       s = _1 + helmertScale h * (1e-6 *~ one)
 
@@ -168,9 +171,9 @@ instance Ellipsoid WGS84 where
 -- | Ellipsoids other than WGS84, used within a defined geographical area where
 -- they are a better fit to the local geoid. Can also be used for historical ellipsoids.
 --
--- The @Show@ instance just shows the name.
+-- The @Show@ instance just returns the name.
 -- Creating two different local ellipsoids with the same name is a Bad Thing.
-data LocalEllipsoid = LocalE {
+data LocalEllipsoid = LocalEllipsoid {
    nameLocal :: String,
    majorRadiusLocal :: Length Double,
    flatRLocal :: Dimensionless Double,
@@ -222,3 +225,22 @@ meridianRadius :: (Ellipsoid e) => e -> Angle Double -> Length Double
 meridianRadius e lat = 
    majorRadius e * (_1 - eccentricity2 e) 
    / sqrt ((_1 - eccentricity2 e * sin lat ^ pos2) ^ pos3)
+   
+
+-- | Radius of curvature of the ellipsoid perpendicular to the meridian at the specified latitude.
+primeVerticalRadius :: (Ellipsoid e) => e -> Angle Double -> Length Double
+primeVerticalRadius e lat =
+   majorRadius e / sqrt (_1 - eccentricity2 e * sin lat ^ pos2)
+
+
+-- | The isometric latitude. The isometric latitude is conventionally denoted by ψ 
+-- (not to be confused with the geocentric latitude): it is used in the development 
+-- of the ellipsoidal versions of the normal Mercator projection and the Transverse 
+-- Mercator projection. The name "isometric" arises from the fact that at any point 
+-- on the ellipsoid equal increments of ψ and longitude λ give rise to equal distance 
+-- displacements along the meridians and parallels respectively.
+isometricLatitude :: (Ellipsoid e) => e -> Angle Double -> Angle Double
+isometricLatitude ellipse lat = atanh sinLat - e * atanh (e * sinLat)
+   where
+      sinLat = sin lat
+      e = sqrt $ eccentricity2 ellipse

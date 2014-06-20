@@ -25,13 +25,14 @@ library
                    array >= 0.4
   ghc-options:     -Wall
   exposed-modules: 
-                   Geodetics.Ellipsoids,
-                   Geodetics.UK,
-                   Geodetics.Geodetic,
                    Geodetics.Altitude,
+                   Geodetics.Ellipsoids,
+                   Geodetics.Geodetic,
                    Geodetics.Grid,
-                   Geodetics.TransverseMercator
-  other-modules:   Geodetics.Path
+                   Geodetics.Path,
+                   Geodetics.TransverseMercator,
+                   Geodetics.UK
+  other-modules:   Geodetics.Stereographic
 
 test-suite GeodeticTest
   type:            exitcode-stdio-1.0
@@ -56,5 +57,6 @@ test-suite GeodeticTest
                    Geodetics.Altitude,
                    Geodetics.Grid,
                    Geodetics.TransverseMercator,
-                   Geodetics.Path
+                   Geodetics.Path,
+                   Geodetics.Stereographic
 
