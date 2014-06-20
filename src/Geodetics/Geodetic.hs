@@ -1,6 +1,7 @@
 module Geodetics.Geodetic (
    -- ** Geodetic Coordinates
    Geodetic (..),
+   readGroundPosition,
    toLocal,
    toWGS84,
    antipode,
@@ -22,7 +23,9 @@ import Data.Maybe
 import Data.Monoid
 import Geodetics.Altitude
 import Geodetics.Ellipsoids
+import Geodetics.LatLongParser
 import Numeric.Units.Dimensional.Prelude
+import Text.ParserCombinators.ReadP
 import qualified Prelude as P
 
 -- | Defines a three-D position on or around the Earth using latitude,
@@ -65,9 +68,19 @@ instance (Ellipsoid e) => Show (Geodetic e) where
       letter "SN" (latitude g), " ", showAngle (abs $ latitude g), ", ",
       letter "WE" (longitude g), " ", showAngle (abs $ longitude g), ", ", 
       show (altitude g), " ", show (ellipsoid g)]
-      where letter s n = [s !! (if n < _0 then 0 else 1)] 
+      where letter s n = [s !! (if n < _0 then 0 else 1)]
 
 
+
+-- | Read the latitude and longitude of a ground position and 
+-- return a Geodetic position on the specified ellipsoid.
+readGroundPosition :: (Ellipsoid e) => e -> String -> Maybe (Geodetic e)
+readGroundPosition e str = 
+   case map fst $ filter (null . snd) $ readP_to_S latLong str of
+      [] -> Nothing
+      (lat,long) : _ -> Just $ groundPosition $ Geodetic (lat *~ degree) (long *~ degree) undefined e
+      
+      
 -- | Show an angle as degrees, minutes and seconds to two decimal places.
 showAngle :: Angle Double -> String
 showAngle a
@@ -152,7 +165,7 @@ earthToGeo e (x,y,z) = (phi, atan2 y x, sqrt (l ^ pos2 + p2) - norm)
       l = z + e2 * norm * sin phi
 
 
--- | Convert a position from any geodetic to a another one, assuming local altitude stays constant.
+-- | Convert a position from any geodetic to another one, assuming local altitude stays constant.
 toLocal :: (Ellipsoid e1, Ellipsoid e2) => e2 -> Geodetic e1 -> Geodetic e2
 toLocal e2 g = Geodetic lat lon alt e2
    where

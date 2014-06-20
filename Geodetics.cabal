@@ -22,13 +22,15 @@ library
   build-depends:   
                    base >= 4,
                    dimensional == 0.13.*,
-                   array >= 0.4
+                   array >= 0.4,
+                   parsec >=3.1.3 && <3.2
   ghc-options:     -Wall
   exposed-modules: 
                    Geodetics.Altitude,
                    Geodetics.Ellipsoids,
                    Geodetics.Geodetic,
                    Geodetics.Grid,
+                   Geodetics.LatLongParser,
                    Geodetics.Path,
                    Geodetics.Stereographic,
                    Geodetics.TransverseMercator,
@@ -58,5 +60,6 @@ test-suite GeodeticTest
                    Geodetics.Grid,
                    Geodetics.TransverseMercator,
                    Geodetics.Path,
-                   Geodetics.Stereographic
+                   Geodetics.Stereographic,
+                   Geodetics.LatLongParser
 
