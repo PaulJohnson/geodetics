@@ -108,16 +108,18 @@ degreesDecimalMinutesUnits = do
    return a
 
 
--- | Parse an unsigned angle written in DDDMMSS format. Leading zeros on the degrees are optional.
+-- | Parse an unsigned angle written in DDDMMSS.ss format. 
+-- Leading zeros on the degrees and decimal places on the seconds are optional
 dms7 :: ReadP Double
 dms7 = do
    str <- munch1 isDigit
+   decs <- option "0" (char '.' *> munch1 isDigit)
    let c = length str
        (ds, rs) = splitAt (c-4) str
        (ms,ss) = splitAt 2 rs
        d = read ds
        m = read ms
-       s = read ss
+       s = read $ ss ++ '.' : decs
    guard $ c >= 5 && c <= 7
    guard $ m < 60
    guard $ s < 60
