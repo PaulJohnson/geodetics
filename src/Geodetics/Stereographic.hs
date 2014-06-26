@@ -14,7 +14,7 @@ import Geodetics.Grid
 import Numeric.Units.Dimensional.Prelude
 import qualified Prelude as P
 
-import Debug.Trace
+-- import Debug.Trace
 
 -- | A stereographic projection with its origin at an arbitrary point on Earth, other than the poles.
 data GridStereo e = GridStereo {
@@ -88,11 +88,11 @@ instance (Ellipsoid e) => GridClass (GridStereo e) e where
          north = _2 * gridR grid * gridScale grid * (sinLatC * gridCos grid - cosLatC * gridSin grid * cos (longC - long0)) / b
    
    fromGrid gp = 
-      trace (
+      {- trace (    -- Remove comment brackets for debugging.
          "fromGrid values:\n   i = " ++ show i ++ "\n   j = " ++ show j ++
          "\n   longC = " ++ show longC ++ "\n   long = " ++ show long ++
          "\n   latC = " ++ show latC ++
-         "\n   lat1 = " ++ show lat1 ++ "\n   latN = " ++ show latN ) $
+         "\n   lat1 = " ++ show lat1 ++ "\n   latN = " ++ show latN ) $ -}
          Geodetic (op latN) (op long) height $ gridEllipsoid grid
       where
          op :: Num a => Quantity d a -> Quantity d a                   -- Values of longitude, tangent longitude, E and N

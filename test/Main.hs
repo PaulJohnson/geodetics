@@ -60,8 +60,8 @@ tests = [
       testCase "toGrid north" $ HU.assertBool "" stereographicToGridN,
       testCase "fromGrid north" $ HU.assertBool "" stereographicFromGridN,
       testCase "toGrid south" $ HU.assertBool "" stereographicToGridS,
-      testCase "fromGrid south" $ HU.assertBool "" stereographicFromGridS
-      --  testProperty "Stereographic round trip" prop_stereographic
+      testCase "fromGrid south" $ HU.assertBool "" stereographicFromGridS,
+      testProperty "Stereographic round trip" prop_stereographic
       ],
    testGroup "Paths" [
       testProperty "Ray Path 1" prop_rayPath1,
