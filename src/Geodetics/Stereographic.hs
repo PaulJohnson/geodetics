@@ -70,7 +70,7 @@ mkGridStereo tangent origin scale = GridStereo {
       
 
 instance (Ellipsoid e) => GridClass (GridStereo e) e where
-   toGrid grid geo = applyOffset (gridOrigin grid) $ GridPoint (op east) (op north) (geoAlt geo) grid
+   toGrid grid geo = applyOffset (gridOrigin grid) $ GridPoint east north (geoAlt geo) grid
       where
          op :: Num a => Quantity d a -> Quantity d a    -- Values of longitude, tangent longitude, E and N
          op = if latitude (gridTangent grid) < _0 then negate else id  -- must be negated in the southern hemisphere.
@@ -80,7 +80,7 @@ instance (Ellipsoid e) => GridClass (GridStereo e) e where
          w = gridC grid * (sA * sB ** e) ** gridN grid
          sA = (_1+sinLat) / (_1 - sinLat)
          sB = (_1 - e*sinLat) / (_1 + e*sinLat)
-         sinLat = sin $ latitude geo
+         sinLat = sin $ op $ latitude geo
          e = sqrt $ eccentricity2 $ ellipsoid geo
          long0 = op $ longitude $ gridTangent grid
          b = _1 + sinLatC * gridSin grid + cosLatC * gridCos grid * cos (longC - long0)

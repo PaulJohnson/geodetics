@@ -104,6 +104,11 @@ sameOffset go1 go2 = check deltaNorth && check deltaEast && check deltaAltitude
    where check f = f go1 - f go2 < 1 *~ milli meter
 
 
+-- | The grid X and Y are both within 1 meter
+closeGrid :: (GridClass r e) => GridPoint r -> GridPoint r -> Bool
+closeGrid p1 p2 = check eastings && check northings && check altitude
+   where check f = f p1 - f p2 < 1 *~ meter
+
 -- | Degrees, minutes and seconds into radians. 
 dms :: Int -> Int -> Double -> Dimensionless Double
 dms d m s = fromIntegral d *~ degree + fromIntegral m *~ arcminute + s *~ arcsecond
@@ -303,8 +308,12 @@ stereographicFromGridS = samePlace p1 p1'
 
 
 -- | Check the round trip for a stereographic projection.
-prop_stereographic :: GridPoint (GridStereo LocalEllipsoid) -> Bool
-prop_stereographic p = sameGrid p $ toGrid (gridBasis p) $ fromGrid p 
+prop_stereographic :: GridPoint (GridStereo LocalEllipsoid) -> Property
+prop_stereographic p =
+   let g = fromGrid p
+       r = toGrid (gridBasis p) g
+   in printTestCase ("p = " ++ show p ++ "\ng = " ++ show g ++ "\nr = " ++ show r) $
+     closeGrid p r 
 
 
 
