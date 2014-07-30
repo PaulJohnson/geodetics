@@ -1,4 +1,4 @@
-name:           Geodetics
+name:           geodetics
 version:        0.0.1
 cabal-version:  >= 1.2
 build-type:     Simple
@@ -19,6 +19,9 @@ description:    Precise geographical coordinates (latitude & longitude), with co
                 types so that coordinates expressed within them cannot be confused with 
                 from coordinates in other frames.
 license-file:   LICENSE
+maintainer:     Paul Johnson <paul@cogito.org.uk>
+homepage:       https://github.com/PaulJohnson/geodetics
+category:       Geography
 
 library
   hs-source-dirs:  src
