@@ -19,14 +19,18 @@ description:    Precise geographical coordinates (latitude & longitude), with co
                 from coordinates in other frames.
 license-file:   LICENSE
 maintainer:     Paul Johnson <paul@cogito.org.uk>
-source-repository: https://github.com/PaulJohnson/geodetics
+homepage:       https://github.com/PaulJohnson/geodetics
 category:       Geography
 tested-with:    GHC==7.6.3
+
+source-repository head
+  type:     git
+  location: https://github.com/PaulJohnson/geodetics
 
 library
   hs-source-dirs:  src
   build-depends:   
-                   base >= 4,
+                   base >= 4.6 && < 4.7,
                    dimensional == 0.13.*,
                    array >= 0.4,
                    parsec >=3.1.3 && <3.2
