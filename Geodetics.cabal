@@ -5,6 +5,8 @@ build-type:     Simple
 author:         Paul Johnson <paul@cogito.org.uk>
 data-files:     
                 AddingProjections.txt, 
+                LICENSE, 
+                README.md, 
                 ToDo.txt
 tested-with:    GHC==7.4.2
 license:        BSD3
@@ -16,6 +18,7 @@ description:    Precise geographical coordinates (latitude & longitude), with co
                 Certain distinguished reference frames and grids are given distinct
                 types so that coordinates expressed within them cannot be confused with 
                 from coordinates in other frames.
+license-file:   LICENSE
 
 library
   hs-source-dirs:  src
