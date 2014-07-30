@@ -67,15 +67,10 @@ tests = [
       testProperty "Ray Path 1" prop_rayPath1,
       testProperty "Ray Continuity" prop_rayContinuity,
       testProperty "Ray Bisection" prop_rayBisect,
-      testProperty "Rhumb Continuity" prop_rhumbContinuity
-      -- testProperty "Rhumb Intersection" prop_rhumbIntersect
+      testProperty "Rhumb Continuity" prop_rhumbContinuity,
+      testProperty "Rhumb Intersection" prop_rhumbIntersect
       ]
    ]
-
-
--- Zero meters.
-m0 :: Length Double
-m0 = 0 *~ meter
 
 
 -- | The positions are within 30 cm.
@@ -123,11 +118,11 @@ prop_WGS84_and_back p = samePlace p $ toLocal (ellipsoid p) $ toWGS84 p
 --  http://www.ngs.noaa.gov/TOOLS/Inv_Fwd/Inv_Fwd.html
 worldLines :: [(String, Geodetic WGS84, Geodetic WGS84, Length Double, Dimensionless Double, Dimensionless Double)]
 worldLines = [
-   ("Ordinary", Geodetic (40*~degree) (30*~degree) m0 WGS84, Geodetic (30*~degree) (50*~degree) m0 WGS84,
+   ("Ordinary", Geodetic (40*~degree) (30*~degree) _0 WGS84, Geodetic (30*~degree) (50*~degree) _0 WGS84,
       2128852.999*~meter, 115.19596706*~degree, 126.79044315*~degree),
-   ("Over Pole", Geodetic (60*~degree) (0*~degree) m0 WGS84, Geodetic (60*~degree) (180*~degree) m0 WGS84,
+   ("Over Pole", Geodetic (60*~degree) (0*~degree) _0 WGS84, Geodetic (60*~degree) (180*~degree) _0 WGS84,
       6695785.820*~meter, 0*~degree, 180*~degree),
-   ("Equator to Pole", Geodetic (0*~degree) (0*~degree) m0 WGS84, Geodetic (90*~degree) (180*~degree) m0 WGS84,
+   ("Equator to Pole", Geodetic (0*~degree) (0*~degree) _0 WGS84, Geodetic (90*~degree) (180*~degree) _0 WGS84,
       10001965.729*~meter, 0*~degree, 180*~degree)]
    
    
@@ -145,16 +140,16 @@ worldLineTests (str, g1, g2, d, a, b) = testCase str $ HU.assertBool "" $ ok $ g
 -- the same Helmert transform as this library. Hence the results should match to within 30 cm.
 ukPoints :: [(String, Geodetic WGS84, Geodetic OSGB36)]
 ukPoints = [
-   ("Greenwich",        Geodetic (dms 51 28 40.86) (dms 0 0 (-5.83)) m0 WGS84, 
-                        Geodetic (dms 51 28 39.00) (dms 0 0 0) m0 OSGB36),
-   ("Edinburgh Castle", Geodetic (dms 55 56 56.30) (dms (-3) (-12) (-2.73)) m0 WGS84, 
-                        Geodetic (dms 55 56 56.51) (dms (-3) (-11) (-57.61)) m0 OSGB36),
-   ("Lands End",        Geodetic (dms 50 03 56.68) (dms (-5) (-42) (-51.20)) m0 WGS84,
-                        Geodetic (dms 50 03 54.51) (dms (-5) (-42) (-47.87)) m0 OSGB36),
-   ("Gt. Yarmouth Pier",Geodetic (dms 52 36 29.33) (dms 1 44 27.79) m0 WGS84,
-                        Geodetic (dms 52 36 27.84) (dms 1 44 34.52) m0 OSGB36),
-   ("Stanhope",         Geodetic (dms 54 44 49.08) (dms (-2) 0 (-19.89)) m0 WGS84,
-                        Geodetic (dms 54 44 48.71) (dms (-2) 0 (-14.41)) m0 OSGB36) ]
+   ("Greenwich",        Geodetic (dms 51 28 40.86) (dms 0 0 (-5.83)) _0 WGS84, 
+                        Geodetic (dms 51 28 39.00) (dms 0 0 0) _0 OSGB36),
+   ("Edinburgh Castle", Geodetic (dms 55 56 56.30) (dms (-3) (-12) (-2.73)) _0 WGS84, 
+                        Geodetic (dms 55 56 56.51) (dms (-3) (-11) (-57.61)) _0 OSGB36),
+   ("Lands End",        Geodetic (dms 50 03 56.68) (dms (-5) (-42) (-51.20)) _0 WGS84,
+                        Geodetic (dms 50 03 54.51) (dms (-5) (-42) (-47.87)) _0 OSGB36),
+   ("Gt. Yarmouth Pier",Geodetic (dms 52 36 29.33) (dms 1 44 27.79) _0 WGS84,
+                        Geodetic (dms 52 36 27.84) (dms 1 44 34.52) _0 OSGB36),
+   ("Stanhope",         Geodetic (dms 54 44 49.08) (dms (-2) 0 (-19.89)) _0 WGS84,
+                        Geodetic (dms 54 44 48.71) (dms (-2) 0 (-14.41)) _0 OSGB36) ]
 
 
 
@@ -321,7 +316,7 @@ prop_stereographic p =
 prop_rayPath1 :: Ray WGS84 -> Bool
 prop_rayPath1 r@(Ray pt b e) = 
       samePlace pt pt1 && sameAngle b b1 && sameAngle e e1
-   where (pt1,b1,e1) = pathFunc (getRay r) m0
+   where (pt1,b1,e1) = pathFunc (getRay r) _0
 
 
 type ContinuityTest e = Geodetic e -> Bearing -> Azimuth -> Distance -> Distance -> Property
@@ -385,11 +380,11 @@ prop_rhumbContinuity = prop_pathContinuity1 rhumbPath
 -- | Two rhumb paths intersect at the same place.
 prop_rhumbIntersect :: RhumbPaths2 -> Property
 prop_rhumbIntersect rp = 
-   case intersect m0 m0 (10.0 *~ centi meter) 100 path1 path2 of
+   case intersect _0 _0 (10.0 *~ centi meter) 100 path1 path2 of
       Just (d1, d2) ->
          let (pt1, _, _) = pathFunc path1 d1
              (pt2, _, _) = pathFunc path2 d2
-         in printTestCase (show (pt1, pt2)) $ samePlace pt1 pt2
-      Nothing -> printTestCase "No intersection found." False
+         in printTestCase (show (pt1, pt2)) $ label "Intersection" $ samePlace pt1 pt2
+      Nothing -> label "No intersection" True
    where
       (path1, path2) = mk2RhumbPaths rp

@@ -5,7 +5,10 @@ OGP Surveying and Positioning Guidance Note number 7, part 2 – August 2006
 -}
 
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}
-module Geodetics.Stereographic where
+module Geodetics.Stereographic (
+   GridStereo (gridTangent, gridOrigin, gridScale),
+   mkGridStereo
+) where
 
 
 import Geodetics.Ellipsoids
@@ -14,7 +17,6 @@ import Geodetics.Grid
 import Numeric.Units.Dimensional.Prelude
 import qualified Prelude as P
 
--- import Debug.Trace
 
 -- | A stereographic projection with its origin at an arbitrary point on Earth, other than the poles.
 data GridStereo e = GridStereo {
@@ -115,6 +117,5 @@ instance (Ellipsoid e) => GridClass (GridStereo e) e where
                   e2 = eccentricity2 $ gridEllipsoid grid
          lats = iterate next lat1
          latN = snd $ head $ dropWhile (\(v1, v2) -> abs (v1-v2) > 0.01 *~ arcsecond) $ zip lats $ tail lats 
-         
-   
+            
    gridEllipsoid = ellipsoid . gridTangent

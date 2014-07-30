@@ -8,17 +8,19 @@ import Geodetics.Geodetic
 import Numeric.Units.Dimensional.Prelude
 import qualified Prelude as P
 
-import Debug.Trace  -- Uncomment if using tracing to debug @intersect@.
 
 -- | Lower and upper exclusive bounds within which a path is valid. 
 type PathValidity = (Length Double, Length Double)
 
 -- | A path is a parametric function of distance along the path. The result is the
--- position, and the bearing and elevation along the path at that point.
+-- position, and the direction of the path at that point as heading and elevation angles.
 --
--- A well-behaved path should be continuous for all distances within its validity range,
--- and make the physical distance along the path from the origin to the result be 
--- approximately equal to the argument. Outside its validity the path function may
+-- A well-behaved path must be continuous and monotonic (that is, if the distance increases
+-- then the result is further along the path) for all distances within its validity range.
+-- Ideally the physical distance along the path from the origin to the result should be equal
+-- to the argument. If this is not practical then a reasonably close approximation may be used,
+-- such as a spheroid instead of an ellipsoid, provided that this is documented. 
+-- Outside its validity the path function may
 -- return anything or bottom.
 data Path e = Path {
       pathFunc :: Length Double -> (Geodetic e, Angle Double, Angle Double),
@@ -28,9 +30,10 @@ data Path e = Path {
 -- | Convenience value for paths that are valid for all distances.
 alwaysValid :: PathValidity
 alwaysValid = (negate inf, inf) where
-   inf = (1.0 *~ meter) / (0 *~ one)
+   inf = (1.0 *~ meter) / (0 *~ one)  -- Assumes IEE arithmetic.
 
 
+-- | True if the path is valid at that distance.
 pathValidAt :: Path e -> Length Double -> Bool
 pathValidAt path d = d > x1 && d < x2
    where (x1,x2) = pathValidity path
@@ -77,76 +80,91 @@ bisect path f t b1 b2 = do
 --
 -- The algorithm projects great-circle paths forwards using the bearing at the 
 -- estimate to find the estimated intersection, and then uses the distances to this 
--- intersection as the next estimate.
+-- intersection as the next estimates.
 --
--- If the estimates depart from the path validity then @Nothing@ is returned.
+-- If either estimate departs from its path validity then @Nothing@ is returned.
 intersect :: (Ellipsoid e) =>
    Length Double -> Length Double     -- ^ Starting estimates.
    -> Length Double                   -- ^ Required accuracy.
-   -> Int                             -- ^ Iteration limit.  
+   -> Int                             -- ^ Iteration limit. Returns @Nothing@ if this is reached.  
    -> Path e -> Path e                -- ^ Paths to intersect.
    -> Maybe (Length Double, Length Double)
 intersect d1 d2 accuracy n path1 path2
-   | not $ pathValidAt path1 d1  = Nothing
-   | not $ pathValidAt path2 d2  = Nothing
-   | n <= 0                      = Nothing
-   | abs (atan2 sinBase cosBase) * r <= accuracy     = Just (d1, d2)
+   | not $ pathValidAt path1 d1     = Nothing
+   | not $ pathValidAt path2 d2     = Nothing
+   | n <= 0                         = Nothing
+   | mag < (1e-15 *~ one)           = Nothing
+   | mag3 (nv1 `cross3` nv2) * r <= accuracy = Just (d1, d2)
+       -- Assumes that sin (accuracy/r) == accuracy/r
    | otherwise = 
-      trace ("From " ++ show (pt1, pt2)
-            ++ ", base = " ++ show ((r * atan2 sinBase cosBase) /~ kilo meter)
-            ++ ", new deltas " ++ show (d1' /~ kilo meter, d2' /~ kilo meter) 
-            ++ ", bearings = " ++ show (b1 /~ degree, b2 /~ degree)
-            ++ ", angles = " ++ show (theta1 /~ degree, theta2 /~ degree)) $
-         intersect (d1 + d1') (d2 + d2') accuracy (pred n) path1 path2
-   where 
+      if abs d1a + abs d2a < abs d1b + abs d2b
+         then intersect (d1 + d1a) (d2 + d2a) accuracy (pred n) path1 path2
+         else intersect (d1 + d1b) (d2 + d2b) accuracy (pred n) path1 path2
+   where
       (pt1, h1, _) = pathFunc path1 d1
-      (pt2, h2, _) = pathFunc path2 d2      
-      theta0 = longitude pt2 - longitude pt1   
-      sinTheta0 = sin theta0
-      cosTheta0 = cos theta0
-      cosLat1 = cos $ pi/_2 - latitude pt1  -- Distance from north pole on unit sphere
-      cosLat2 = cos $ pi/_2 - latitude pt2  -- Ignoring trig identities for clarity.
-      sinLat1 = sin $ pi/_2 - latitude pt1
-      sinLat2 = sin $ pi/_2 - latitude pt2
-      cosBase = cosLat1 * cosLat2 + sinLat1 * sinLat2 * cosTheta0  -- Cosine Rule
-      sinBase = sqrt(_1 - cosBase * cosBase)
-      tb = sinTheta0 / sinBase
-      sinB1 = sinLat2 * tb           -- Bearing of pt2 from pt1, by Sine Rule
-      sinB2 = negate $ sinLat1 * tb  -- and vice versa.  Negated because its the other side.   
-      cosB1 = (cosLat2 - cosLat1 * cosBase) / (sinLat1 * sinBase)  -- And by Cosine Rule
-      cosB2 = (cosLat1 - cosLat2 * cosBase) / (sinLat2 * sinBase)
-      b1 = atan2 sinB1 cosB1         -- Gives correct bearing for all quadrants.
-      b2 = atan2 sinB2 cosB2
-      theta1 = b1 - h1
-      theta2 = h2 - b2 -- Other side of triangle, so angles are the other way round.
-      d1' = r * atan (sinBase / (cosBase * cos theta1 + sin theta1 / tan theta2))
-      d2' = r * atan (sinBase / (cosBase * cos theta2 + sin theta2 / tan theta1))  -- Cotan rule.
+      (pt2, h2, _) = pathFunc path2 d2
+      vectors :: Angle Double -> Angle Double -> Angle Double 
+                 -> (Vec3 (Dimensionless Double), Vec3 (Dimensionless Double))
+      vectors lat lon b = (
+          -- Unit vector of normal to surface at (lat,lon)
+         (cosLat*cosLon, cosLat*sinLon, sinLat),
+         -- Normal of great circle defined by bearing b at (lat,lon)
+         (sinLon * cosB - sinLat * cosLon * sinB,
+          negate cosLon * cosB - sinLat * sinLon * sinB,
+           cosLat * sinB))
+         where
+            sinLon = sin lon
+            sinLat = sin lat
+            cosLon = cos lon
+            cosLat = cos lat
+            sinB = sin b
+            cosB = cos b
+      mag3 (x,y,z) = sqrt $ x*x + y*y + z*z
+      (nv1, gc1) = vectors (latitude pt1) (longitude pt1) h1
+      (nv2, gc2) = vectors (latitude pt2) (longitude pt2) h2
+      nv3 = gc1 `cross3` gc2         -- Intersection of the great circles
+      mag = mag3 nv3
+      nv3a = scale3 nv3 (_1 / mag)   -- Scale to unit. See outer function for case when mag3 == 0
+      nv3b = negate3 nv3a            -- Antipodal result. Take the closest.
+      -- Find "nearest" intersection, defined as smaller of sum of distances to current points.
+      d1a = gcDist gc1 nv1 nv3a * r
+      d2a = gcDist gc2 nv2 nv3a * r
+      d1b = gcDist gc1 nv1 nv3b * r
+      d2b = gcDist gc2 nv2 nv3b * r
+      -- Signed angle between v1 and v2, 
+      gcDist norm v1 v2 = 
+         let c = v1 `cross3` v2 
+         in (if c `dot3` norm < _0 then negate else id) $ atan2 (mag3 c) (v1 `dot3` v2) 
       r = majorRadius $ ellipsoid pt1
-      
+          
 {- Note on derivation
 
-A spherical approximation is used to get the approximate distances to pt3,
-the nearest intersection of the great circles that lie tangent to the 
-paths at pt1 and pt2. All the arithmetic is performed on the unit sphere
-except for d1 and d2, the distances along the paths.
+The algorithm is a variant of the Newton-Raphson method, and shares its advantage
+of rapid convergence in many useful cases. Each path has a current approximation to
+the intersection, and the next approximation is computed by projecting both paths 
+along great circles from the current approximation and finding the point where those
+great circles intersect. A spherical Earth is assumed for simplicity. 
 
-pt1 and pt2 form a triangle with the north pole. The lines of longitude
-from the pole to pt1 and pt2 are the known sides of the triangle, and the angle
-theta0 is the difference in the longitudes of pt1 and pt2.
+The Great Circle calculations use a vector method rather than spherical trigonometry.
+This avoids a lot of transcendental functions and also the singularities inherent in 
+polar coordinate systems. This implementation is based on formulae from 
+http://www.movable-type.co.uk/scripts/latlong-vectors.html, which in turn is based on 
+"A Non-singular Horizontal Position Representation" by Kenneth Gade, THE JOURNAL OF 
+NAVIGATION (2010), 63, 395–417.
+http://www.navlab.net/Publications/A_Nonsingular_Horizontal_Position_Representation.pdf
 
-By the cosine rule we get the baseline from pt1 to pt2, and the
-interior angles of this triangle give us the bearings (b1, b2) of the end points
-of the baseline.
 
-Hence we now have a triangle (pt1,pt2,pt3) where we know the distance pt1->pt2
-and the interior angles theta1 & theta2 at pt1 & pt2 respectively. The cotangent
-rule now gives us the distances from pt1->pt3 and pt2->pt3 (d1', d2').
+"pt1" is the current approximation for the result on "path1".  The vector "nv1" is the 
+unit vector pointing "pt1". "gc1" is the normal to the great circle tangent to 
+"path1" at "pt1". "nv2" and "gc2" are similarly derived from "path2".
 
-The hairiest aspect of this is not the spherical trig, its making sure that
-it does the Right Thing for every quadrant of every angle.
-
+The intersection of the planes of "gc1" and "gc2" is given by their cross product, "nv3".
+This is scaled to a unit vector "nv3a", and the other intersection of the great circles is
+at "nv3b", opposite. The distances from nv1 and nv2 to nv3a and nv3b are computed using
+the corresponding great-circle normals to determine whether the distances are positive or 
+negative along the paths. The nearest solution (defined in terms of great-circle distance) 
+is taken as the basis for the next approximation.
 -}
-
 
 -- | A ray from a point heading in a straight line in 3 dimensions. 
 rayPath :: (Ellipsoid e) => 
@@ -187,7 +205,8 @@ rayPath pt1 bearing elevation = Path ray alwaysValid
       
 -- | Rhumb line: path following a constant course. Also known as a loxodrome.
 --
--- The valid range stops a few arc-minutes short of the poles. 
+-- The valid range stops a few arc-minutes short of the poles to ensure that the 
+-- polar singularities are not included.
 --
 -- Based on *Practical Sailing Formulas for Rhumb-Line Tracks on an Oblate Earth* 
 -- by G.H. Kaplan, U.S. Naval Observatory. Except for points close to the poles 
@@ -198,7 +217,7 @@ rhumbPath :: (Ellipsoid e) =>
    -> Path e
 rhumbPath pt course = Path rhumb validity
    where
-      rhumb distance = (Geodetic lat (properAngle lon) (0 *~ meter) (ellipsoid pt), course, _0)
+      rhumb distance = (Geodetic lat (properAngle lon) _0 (ellipsoid pt), course, _0)
          where
             lat' = lat0 + distance * cosC / m0   -- Kaplan Eq 13.
             lat = lat0 + (m0 / (a*(_1-e2))) * ((_1-_3*e2/_4)*(lat'-lat0)
@@ -237,10 +256,8 @@ latitudePath pt = Path line alwaysValid
       line distance = (pt2, pi/_2, _0) 
          where
             pt2 = Geodetic 
-               (latitude pt) 
-               (longitude pt + distance / r)
-               (0 *~ meter)
-               (ellipsoid pt)
+               (latitude pt) (longitude pt + distance / r)
+               _0 (ellipsoid pt)
       r = latitudeRadius (ellipsoid pt) (latitude pt)
 
 
@@ -252,6 +269,3 @@ longitudePath :: (Ellipsoid e) =>
    Geodetic e    -- ^ Start point.
    -> Path e
 longitudePath pt = rhumbPath pt _0
-      
-
-

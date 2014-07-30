@@ -13,7 +13,9 @@ module Geodetics.Geodetic (
    -- ** Earth Centred Earth Fixed Coordinates
    ECEF,
    geoToEarth,
-   earthToGeo
+   earthToGeo,
+   -- ** Re-exported for convenience
+   WGS84 (..)
 ) where
 
 
@@ -65,8 +67,8 @@ data (Ellipsoid e) => Geodetic e = Geodetic {
 
 instance (Ellipsoid e) => Show (Geodetic e) where
    show g = concat [
-      letter "SN" (latitude g), " ", showAngle (abs $ latitude g), ", ",
-      letter "WE" (longitude g), " ", showAngle (abs $ longitude g), ", ", 
+      showAngle (abs $ latitude g),  " ", letter "SN" (latitude g),  ", ",
+      showAngle (abs $ longitude g), " ", letter "WE" (longitude g), ", ", 
       show (altitude g), " ", show (ellipsoid g)]
       where letter s n = [s !! (if n < _0 then 0 else 1)]
 
@@ -74,6 +76,20 @@ instance (Ellipsoid e) => Show (Geodetic e) where
 
 -- | Read the latitude and longitude of a ground position and 
 -- return a Geodetic position on the specified ellipsoid.
+-- 
+-- The latitude and longitude may be in any of the following formats.
+-- The comma between latitude and longitude is optional in all cases. 
+-- Latitude must always be first.
+-- 
+-- * Signed decimal degrees: 34.52327, -46.23234
+-- 
+-- * Decimal degrees NSEW: 34.52327N, 46.23234W
+--
+-- * Degrees and decimal minutes (units optional): 34° 31.43' N, 46° 13.92' 
+-- 
+-- * Degrees, minutes and seconds (units optional): 34° 31' 23.52\" N, 46° 13' 56.43\" W 
+-- 
+-- * DDDMMSS format with optional leading zeros: 343123.52N, 0461356.43W
 readGroundPosition :: (Ellipsoid e) => e -> String -> Maybe (Geodetic e)
 readGroundPosition e str = 
    case map fst $ filter (null . snd) $ readP_to_S latLong str of

@@ -232,7 +232,9 @@ instance Show RhumbPaths2 where
          (pt2, b2, _) = pathFunc p2 (0 *~ meter)
           
 instance Arbitrary RhumbPaths2 where
-   arbitrary = RP2 <$> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
+   arbitrary = RP2 
+      <$> arbitrary `suchThat` ((< 70 *~ degree) . abs . latitude)
+      <*> arbitrary <*> arbitrary <*> arbitrary <*> arbitrary
    shrink rp = 
       tail $ RP2 <$> 
          shrink' (rp2Point0 rp) <*> 

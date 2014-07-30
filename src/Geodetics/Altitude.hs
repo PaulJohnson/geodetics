@@ -12,5 +12,6 @@ import qualified Prelude as P
 class HasAltitude a where
    altitude :: a -> Length Double
    setAltitude :: Length Double -> a -> a
-   groundPosition :: a -> a  -- ^ Set altitude to zero.
-   groundPosition = setAltitude (0 *~ meter)
+   -- | Set altitude to zero.
+   groundPosition :: a -> a
+   groundPosition = setAltitude _0

@@ -67,7 +67,7 @@ degreesMinutesSeconds = do
    return $ d + ms
 
 
--- | Parse an unsigned angle written using degrees, minutes and seconds with units (° ' "). At least one component must be specified.
+-- | Parse an unsigned angle written using degrees, minutes and seconds with units (° ' \"). At least one component must be specified.
 degreesMinutesSecondsUnits :: ReadP Double
 degreesMinutesSecondsUnits = do
    (s, a) <- gather $ do
@@ -95,7 +95,7 @@ degreesDecimalMinutes = do
    return $ d + m/60
    
    
--- | Parse an unsigned angle written using degrees and decimal minutes with units (° ' ")
+-- | Parse an unsigned angle written using degrees and decimal minutes with units (° ')
 degreesDecimalMinutesUnits :: ReadP Double
 degreesDecimalMinutesUnits = do
    (s, a) <- gather $ do
@@ -182,11 +182,13 @@ latLong = latLong1 +++ longLat +++ signedLatLong
       latLong1 = do
          lat <- latitudeNS
          skipSpaces
+         P.optional $ char ',' >> skipSpaces
          long <- longitudeEW
          return (lat, long)
       longLat = do
          long <- longitudeEW
          skipSpaces
+         P.optional $ char ',' >> skipSpaces
          lat <- latitudeNS
          return (lat, long)
 

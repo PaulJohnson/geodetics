@@ -3,18 +3,18 @@ version:        0.0.1
 cabal-version:  >= 1.2
 build-type:     Simple
 author:         Paul Johnson <paul@cogito.org.uk>
-data-files:     ToDo.txt
+data-files:     
+                AddingProjections.txt, 
+                ToDo.txt
 tested-with:    GHC==7.4.2
 license:        BSD3
 copyright:      Paul Johnson 2014.
 synopsis:       Terrestrial coordinate systems and associated calculations.
 description:    Precise geographical coordinates (latitude & longitude), with conversion between
-                different reference frames.
+                different reference frames and projections.
                 .
-                Transverse Mercator grids.
-                .
-                Certain "priviledged" reference frames and grids are given distinct
-                types so that coordinates expressed within them are distinguished 
+                Certain distinguished reference frames and grids are given distinct
+                types so that coordinates expressed within them cannot be confused with 
                 from coordinates in other frames.
 
 library

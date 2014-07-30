@@ -4,5 +4,3 @@ To Do
 * Add UTM and Universal Polar grids.
 
 * Add more national grid systems.
-
-* Fix the path intersection algorithm.

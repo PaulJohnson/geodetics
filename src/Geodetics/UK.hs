@@ -25,7 +25,7 @@ import qualified Prelude as P
 
 -- | Ellipsoid definition for Great Britain. Airy 1830 offset from the centre of the Earth 
 -- and rotated slightly.
-
+-- 
 -- The Helmert parameters are from the Ordnance Survey document 
 -- \"A Guide to Coordinate Systems in Great Britain\", which notes that it
 -- can be in error by as much as 5 meters and should not be used in applications
@@ -63,7 +63,7 @@ ukTrueOrigin = Geodetic {
 }
 
 ukFalseOrigin :: GridOffset 
-ukFalseOrigin = GridOffset (400 *~ kilo meter) ((-100) *~ kilo meter) (0 *~ meter)
+ukFalseOrigin = GridOffset ((-400) *~ kilo meter) (100 *~ kilo meter) (0 *~ meter)
 
 
 -- | Numerical definition of the UK national grid.
@@ -78,7 +78,7 @@ ukGridSquare = 100 *~ kilo meter
 
 
 -- | Convert a grid reference to a position, if the reference is valid. 
--- This actually returns the position of the south-west corner of the nominated 
+-- This returns the position of the south-west corner of the nominated 
 -- grid square and an offset to its centre. Altitude is set to zero.
 fromUkGridReference :: String -> Maybe (GridPoint UkNationalGrid, GridOffset)
 fromUkGridReference str = if length str < 2 then Nothing else do

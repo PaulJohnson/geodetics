@@ -20,9 +20,8 @@ data GridTM e = GridTM {
    trueOrigin :: Geodetic e,
       -- ^ A point on the line where the projection touches the ellipsoid (altitude is ignored).
    falseOrigin :: GridOffset,
-      -- ^ An offset from the true origin expressed as a vector from the true origin, 
-      -- used to avoid negative coordinates over the area of interest.
-      -- The altitude gives a vertical offset from the ellipsoid.
+      -- ^ The grid position of the true origin. Used to avoid negative coordinates over 
+      -- the area of interest. The altitude gives a vertical offset from the ellipsoid.
    gridScale :: Dimensionless Double,
       -- ^ A scaling factor that balances the distortion between the east & west edges and the middle 
       -- of the projection.
@@ -32,8 +31,12 @@ data GridTM e = GridTM {
 } deriving (Show)
 
 
-
-mkGridTM :: (Ellipsoid e) => Geodetic e -> GridOffset -> Dimensionless Double -> GridTM e
+-- | Create a Transverse Mercator grid.
+mkGridTM :: (Ellipsoid e) => 
+   Geodetic e               -- ^ True origin.
+   -> GridOffset            -- ^ Vector from true origin to false origin.
+   -> Dimensionless Double  -- ^ Scale factor.
+   -> GridTM e
 mkGridTM origin offset sf =
    GridTM {trueOrigin = origin,
            falseOrigin = offset,
@@ -59,7 +62,7 @@ m grid lat = bF0 * (gridN1 grid * dLat
    where
       dLat = lat - latitude (trueOrigin grid)
       sLat = lat + latitude (trueOrigin grid)
-      bF0 = (minorRadius $ gridEllipsoid grid) * gridScale grid
+      bF0 = minorRadius (gridEllipsoid grid) * gridScale grid
 
 
 instance (Ellipsoid e) => GridClass (GridTM e) e where
@@ -80,7 +83,7 @@ instance (Ellipsoid e) => GridClass (GridTM e) e where
             
             
       where
-         GridPoint east' north' _ _ = (offsetNegate $ falseOrigin grid) `applyOffset` p
+         GridPoint east' north' _ _ = (falseOrigin grid) `applyOffset` p
          lat' = fst $ head $ dropWhile ((> 0.01 *~ milli meter) . snd) 
                $ tail $ iterate next (latitude $ trueOrigin grid, 1 *~ meter) 
             where
@@ -96,11 +99,11 @@ instance (Ellipsoid e) => GridClass (GridTM e) e where
          eta2 = v / rho - _1
                
                
-         aF0 = (majorRadius $ gridEllipsoid grid) * gridScale grid
+         aF0 = majorRadius (gridEllipsoid grid) * gridScale grid
          e2 = eccentricity2 $ gridEllipsoid grid
          grid = gridBasis p
          
-   toGrid grid geo = applyOffset (off  `mappend` falseOrigin grid) $ 
+   toGrid grid geo = applyOffset (off  `mappend` (offsetNegate $ falseOrigin grid)) $ 
                      GridPoint (0 *~ metre) (0 *~ metre) (0 *~ metre) grid
       where
          v = aF0 / sqrt (_1 - e2 * sinLat2)

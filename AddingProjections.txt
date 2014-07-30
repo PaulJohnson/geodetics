@@ -1,0 +1,79 @@
+How to add projections to the Geodetics library
+===============================================
+
+The most useful thing you can do to help the Geodetics library is to
+add new projections:
+
+New projection types
+---------------------
+
+A projection type is a generic mapping of an ellipsoid to a
+plane. The library already contains the Stereographic and
+Transverse Mercator projections. To add a new projection type:
+
+* Create a new module under Geodetics to contain your projection.
+
+* Define your new projection as a data type containing whatever
+  parameters your projection needs to define it. If your projection
+  includes a False Origin (most do) then use the GridOffset type. A
+  scaling factor should be a Dimensionless Double. 
+
+  If the projection has intermediate values derived purely from these
+  parameters then you can make it more efficient if you include them
+  in the data type rather than recalculating them every time. If you
+  do this then don't export the constructor, and have a separate
+  function to fill out the data structure correctly. See Stereographic
+  for an example.
+
+* Make your new projection an instance of GridClass and define the
+  "toGrid", "fromGrid" and "gridEllipsoid" functions. Generic grids
+  should have the ellipsoid as a parameter.
+
+National and other standard projections
+---------------------------------------
+
+A standard projection is a distinguished value of a generic
+projection. For instance the UK National Grid is a value of the
+TransverseMercator projection.
+
+A standard projection should be based on a generic projection. There
+is little point in duplicating code for two standard projections if
+they are based on the same underlying mathematics. Therefore the
+design for a standard projection contains the following elements:
+
+* A representation of the projection as an untyped value of the
+  underlying generic projection. For instance the UK OS grid is
+  represented by "ukGrid :: GridTM OSGB36".
+
+* A unit type (that is, one constructor with no arguments) that is an
+  instance of the GridClass. Implement the "toGrid" and "fromGrid"
+  functions using the "unsafeGridCoerce" function and the untyped
+  value defined above. For instace the UkNationalGrid type has the
+  following implementations in its GridClass instance:
+
+     toGrid _ = unsafeGridCoerce UkNationalGrid . toGrid ukGrid
+     fromGrid = fromGrid . unsafeGridCoerce ukGrid
+
+If your standard projection has a particular ellipsoid that is not
+already defined (for instance, the UK national grid is based on
+OSGB36) then this should be defined as a unit type in the same module
+and made an instance of Ellipsoid.
+
+If there is a grid reference system associated with the projection
+then this should be implemented as a pair of functions between strings
+and gridpoints. When converting from a string make sure that some part
+of the result indicates the precision of the reference. One way is to
+return a gridpoint for the southwest corner of the grid square and an
+offset to the centre.
+
+Testing
+-------
+
+In the "test" folder create a new module for your projection and
+import it into "Main.hs".  All projections should have several test
+points derived from a known oracle (such as a pre-existing
+implementation or reference table). Cite the source in a comment to
+your test data.  In addition generic projections should have a "round
+trip" test using QuickCheck to show that (fromGrid . toGrid) is an
+identity to within some specified accuracy.
+

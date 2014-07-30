@@ -1,11 +1,11 @@
 {-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
 
 module Geodetics.Grid (
-   -- ** Grid Types
+   -- ** Grid types
    GridClass (..),
    GridPoint (..),
    GridOffset (..),
-   -- ** Grid Operations
+   -- ** Grid operations
    polarOffset,
    offsetScale,
    offsetNegate,
@@ -14,9 +14,9 @@ module Geodetics.Grid (
    offsetDistanceSq,
    offsetBearing,
    gridOffset,
-   -- ** Unsafe Conversion
+   -- ** Unsafe conversion
    unsafeGridCoerce,
-   -- ** Utility Functions for grid references
+   -- ** Utility functions for grid references
    fromGridDigits,
    toGridDigits
 ) where
@@ -63,12 +63,14 @@ instance HasAltitude (GridPoint g) where
 -- | A vector relative to a point on a grid.
 -- Operations that use offsets will only give
 -- meaningful results if all the points come from the same grid.
+-- 
+-- The monoid instance is the sum of offsets.
 data GridOffset = GridOffset {
    deltaEast, deltaNorth, deltaAltitude :: Length Double
 } deriving (Eq, Show)
 
-instance Monoid GridOffset where   -- ^ Sum of offsets.
-   mempty = GridOffset (0 *~ meter) (0 *~ meter) (0 *~ meter)
+instance Monoid GridOffset where
+   mempty = GridOffset _0 _0 _0
    mappend g1 g2 = GridOffset (deltaEast g1 + deltaEast g2) 
                               (deltaNorth g1 + deltaNorth g2) 
                               (deltaAltitude g1 + deltaAltitude g2) 
@@ -78,8 +80,8 @@ instance Monoid GridOffset where   -- ^ Sum of offsets.
 -- There is no elevation parameter because we are using a plane to approximate an ellipsoid,
 -- so elevation would not provide a useful result.  If you want to work with elevations
 -- then "rayPath" will give meaningful results.
-polarOffset :: Length Double -> Dimensionless Double -> GridOffset
-polarOffset r d = GridOffset (r * sin d) (r * cos d) (0 *~ meter)
+polarOffset :: Length Double -> Angle Double -> GridOffset
+polarOffset r d = GridOffset (r * sin d) (r * cos d) _0
 
 
 -- | Scale an offset by a scalar.
@@ -114,8 +116,8 @@ offsetDistanceSq off =
    deltaEast off ^ pos2 + deltaNorth off ^ pos2 + deltaAltitude off ^ pos2
 
               
--- | The direction represented by an offset, as radians to the right of North.
-offsetBearing :: GridOffset -> Dimensionless Double
+-- | The direction represented by an offset, as bearing to the right of North.
+offsetBearing :: GridOffset -> Angle Double
 offsetBearing off = atan2 (deltaEast off) (deltaNorth off)
 
 
@@ -130,7 +132,7 @@ gridOffset p1 p2 = GridOffset (eastings p2 - eastings p1)
 -- but with the same easting, northing and altitude. This is unsafe because it
 -- will produce a different position unless the two grids are actually equal.
 --
--- It should be used only to convert between privileged grids (e.g. "UkNationalGrid") and
+-- It should be used only to convert between distinguished grids (e.g. "UkNationalGrid") and
 -- their equivalent numerical definitions.
 unsafeGridCoerce :: b -> GridPoint a -> GridPoint b
 unsafeGridCoerce base p = GridPoint (eastings p) (northings p) (altitude p) base
@@ -166,7 +168,7 @@ toGridDigits ::
    -> Length Double -- ^ Offset to convert into grid.
    -> Maybe (Integer, String)
 toGridDigits sq n d =
-   if sq < (1 *~ kilo meter) || n < 0 || d < (0 *~ meter) 
+   if sq < (1 *~ kilo meter) || n < 0 || d < _0 
    then Nothing
    else
       Just (sqs, pad)

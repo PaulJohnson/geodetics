@@ -7,14 +7,6 @@ specific area.
 -}
 
 module Geodetics.Ellipsoids (
-   -- ** Tiny linear algebra library for 3D vectors
-   Vec3,
-   Matrix3,
-   add3,
-   scale3,
-   transform3,
-   invert3,
-   trans3,
    -- ** Helmert transform between geodetic reference systems
    Helmert (..),
    inverseHelmert,
@@ -28,12 +20,23 @@ module Geodetics.Ellipsoids (
    minorRadius,
    eccentricity2,
    eccentricity'2,
-   -- * Auxiliary Latitudes and Related Values
+   -- ** Auxiliary latitudes and related Values
    normal,
    latitudeRadius,
    meridianRadius,
    primeVerticalRadius,
-   isometricLatitude
+   isometricLatitude,
+   -- ** Tiny linear algebra library for 3D vectors
+   Vec3,
+   Matrix3,
+   add3,
+   scale3,
+   negate3,
+   transform3,
+   invert3,
+   trans3,
+   dot3,
+   cross3
 ) where
 
 import Data.Monoid
@@ -54,6 +57,10 @@ scale3 :: (Num a, Mul d d' d'') =>
    Vec3 (Dimensional DQuantity d a) -> Dimensional DQuantity d' a -> Vec3 (Dimensional DQuantity d'' a)
 scale3 (x,y,z) s = (x*s, y*s, z*s)
 
+
+-- | Negation of a vector.
+negate3 :: (Num a) => Vec3 (Quantity d a) -> Vec3 (Quantity d a)
+negate3 (x,y,z) = (negate x, negate y, negate z)
 
 -- | Add two vectors
 add3 :: (Num a) => Vec3 (Quantity d a) -> Vec3 (Quantity d a) -> Vec3 (Quantity d a)
@@ -85,6 +92,16 @@ invert3 ((x1,y1,z1),
 trans3 :: Matrix3 a -> Matrix3 a
 trans3 ((x1,y1,z1),(x2,y2,z2),(x3,y3,z3)) = ((x1,x2,x3),(y1,y2,y3),(z1,z2,z3))
 
+
+-- | Dot product of two vectors
+dot3 :: (Num a, Mul d1 d2 d3) => 
+   Vec3 (Dimensional DQuantity d1 a) -> Vec3 (Dimensional DQuantity d2 a) -> Dimensional DQuantity d3 a
+dot3 (x1,y1,z1) (x2,y2,z2) = x1*x2 + y1*y2 + z1*z2
+
+-- | Cross product of two vectors
+cross3 :: (Num a, Mul d1 d2 d3) => 
+   Vec3 (Dimensional DQuantity d1 a) -> Vec3 (Dimensional DQuantity d2 a) -> Vec3 (Dimensional DQuantity d3 a)
+cross3 (x1,y1,z1) (x2,y2,z2) = (y1*z2 - z1*y2, z1*x2 - x1*z2, x1*y2 - y1*x2)
 
 
 -- | The 7 parameter Helmert transformation. The monoid instance allows composition.
