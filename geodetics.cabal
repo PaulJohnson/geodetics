@@ -1,6 +1,6 @@
 name:           geodetics
 version:        0.0.1
-cabal-version:  >= 1.2
+cabal-version:  >= 1.10
 build-type:     Simple
 author:         Paul Johnson <paul@cogito.org.uk>
 data-files:     
@@ -8,7 +8,6 @@ data-files:
                 LICENSE, 
                 README.md, 
                 ToDo.txt
-tested-with:    GHC==7.4.2
 license:        BSD3
 copyright:      Paul Johnson 2014.
 synopsis:       Terrestrial coordinate systems and associated calculations.
@@ -20,8 +19,9 @@ description:    Precise geographical coordinates (latitude & longitude), with co
                 from coordinates in other frames.
 license-file:   LICENSE
 maintainer:     Paul Johnson <paul@cogito.org.uk>
-homepage:       https://github.com/PaulJohnson/geodetics
+source-repository: https://github.com/PaulJohnson/geodetics
 category:       Geography
+tested-with:    GHC==7.6.3
 
 library
   hs-source-dirs:  src
@@ -41,6 +41,7 @@ library
                    Geodetics.Stereographic,
                    Geodetics.TransverseMercator,
                    Geodetics.UK
+  Default-Language: Haskell2010
 
 test-suite GeodeticTest
   type:            exitcode-stdio-1.0
@@ -49,6 +50,7 @@ test-suite GeodeticTest
   build-depends:   
                    base >= 4,
                    HUnit >= 1.2 && < 2,
+                   dimensional == 0.13.*,
                    QuickCheck >= 2.4,
                    test-framework >= 0.4.1,
                    test-framework-quickcheck2,
@@ -68,4 +70,4 @@ test-suite GeodeticTest
                    Geodetics.Path,
                    Geodetics.Stereographic,
                    Geodetics.LatLongParser
-
+  Default-Language: Haskell2010
