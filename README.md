@@ -7,7 +7,7 @@ This library provides "geodetic" positions. That is, latitude, longitude and alt
 specified Terrestrial Reference Frame (TRF). The basic TRF is the WGS84, which is the
 one used by GPS and Google Earth. Others can be added by describing the underlying ellipsoid
 and the difference in angle and centre with WGS84, and a position in one TRF can be
-transformed into another. Given two TRFs you can find the shortest distance between them
+transformed into another. Given two points in the same TRF you can find the shortest distance between them
 and the bearing from one to the other.
 
 Once you have a geodetic position defined you can project it onto a flat plane, or Grid.
