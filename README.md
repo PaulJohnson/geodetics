@@ -19,3 +19,7 @@ The Paths module defines a path as a parametric function of distance that return
 position and a bearing. Given two paths you can find their intersection using a fast
 iterative algorithm.
 
+Release Notes
+-------------
+
+Verison 0.0.2: Tided up cabal file and removed spurious dependency on Parsec.
