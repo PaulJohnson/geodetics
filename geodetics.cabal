@@ -1,5 +1,5 @@
 name:           geodetics
-version:        0.0.1
+version:        0.0.2
 cabal-version:  >= 1.10
 build-type:     Simple
 author:         Paul Johnson <paul@cogito.org.uk>
@@ -65,12 +65,5 @@ test-suite GeodeticTest
   ghc-options:     -Wall -rtsopts
   other-modules:   
                    ArbitraryInstances,
-                   Main,
-                   Geodetics.Geodetic,
-                   Geodetics.Altitude,
-                   Geodetics.Grid,
-                   Geodetics.TransverseMercator,
-                   Geodetics.Path,
-                   Geodetics.Stereographic,
-                   Geodetics.LatLongParser
+                   Main
   Default-Language: Haskell2010
