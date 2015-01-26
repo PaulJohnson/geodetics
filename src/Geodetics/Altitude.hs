@@ -4,7 +4,8 @@ module Geodetics.Altitude (
 
 import Numeric.Units.Dimensional.Prelude
 
--- | All geographical coordinate systems need the concept of altitude above a reference point, usually associated with
+-- | All geographical coordinate systems need the concept of#
+-- altitude above a reference point, usually associated with
 -- local sea level.
 -- 
 -- Minimum definition: altitude, setAltitude.

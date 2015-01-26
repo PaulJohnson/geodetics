@@ -1,7 +1,7 @@
 {- |
 The following is based on equations in Section 1.4.7.1 in 
 OGP Surveying and Positioning Guidance Note number 7, part 2 – August 2006
- http://ftp.stu.edu.tw/BSD/NetBSD/pkgsrc/distfiles/epsg-6.11/G7-2.pdf
+<http://ftp.stu.edu.tw/BSD/NetBSD/pkgsrc/distfiles/epsg-6.11/G7-2.pdf>
 -}
 
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances #-}

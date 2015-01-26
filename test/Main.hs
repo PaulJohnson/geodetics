@@ -115,7 +115,7 @@ prop_WGS84_and_back p = samePlace p $ toLocal (ellipsoid p) $ toWGS84 p
 
 -- | Sample pairs of points with bearings and distances. 
 -- The Oracle for these values is the @FORWARD@ program from
---  http://www.ngs.noaa.gov/TOOLS/Inv_Fwd/Inv_Fwd.html
+--  <http://www.ngs.noaa.gov/TOOLS/Inv_Fwd/Inv_Fwd.html>
 worldLines :: [(String, Geodetic WGS84, Geodetic WGS84, Length Double, Dimensionless Double, Dimensionless Double)]
 worldLines = [
    ("Ordinary", Geodetic (40*~degree) (30*~degree) _0 WGS84, Geodetic (30*~degree) (50*~degree) _0 WGS84,
@@ -136,7 +136,7 @@ worldLineTests (str, g1, g2, d, a, b) = testCase str $ HU.assertBool "" $ ok $ g
          && abs (b - b1) < 0.01 *~ arcsecond
 
 -- | Sample points for UK tests. The oracle for these values is the script at 
--- http://www.movable-type.co.uk/scripts/latlong-convert-coords.html, which uses
+-- <http://www.movable-type.co.uk/scripts/latlong-convert-coords.html>, which uses
 -- the same Helmert transform as this library. Hence the results should match to within 30 cm.
 ukPoints :: [(String, Geodetic WGS84, Geodetic OSGB36)]
 ukPoints = [
@@ -270,7 +270,8 @@ stereoGridS = mkGridStereo tangent origin (0.9999079 *~ one)
       origin = GridOffset ((-155000) *~ metre) (463000 *~ metre) (0 *~ meter)
 
 
--- | Data for the stereographic tests taken from http://ftp.stu.edu.tw/BSD/NetBSD/pkgsrc/distfiles/epsg-6.11/G7-2.pdf
+-- | Data for the stereographic tests taken from 
+-- <http://ftp.stu.edu.tw/BSD/NetBSD/pkgsrc/distfiles/epsg-6.11/G7-2.pdf>
 stereographicToGridN :: Bool
 stereographicToGridN = sameGrid g1 g1'
    where

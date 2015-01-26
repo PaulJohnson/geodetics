@@ -137,7 +137,7 @@ intersect d1 d2 accuracy n path1 path2
          in (if c `dot3` norm < _0 then negate else id) $ atan2 (mag3 c) (v1 `dot3` v2) 
       r = majorRadius $ ellipsoid pt1
           
-{- Note on derivation
+{- Note on derivation of "intersect"
 
 The algorithm is a variant of the Newton-Raphson method, and shares its advantage
 of rapid convergence in many useful cases. Each path has a current approximation to
@@ -148,10 +148,10 @@ great circles intersect. A spherical Earth is assumed for simplicity.
 The Great Circle calculations use a vector method rather than spherical trigonometry.
 This avoids a lot of transcendental functions and also the singularities inherent in 
 polar coordinate systems. This implementation is based on formulae from 
-http://www.movable-type.co.uk/scripts/latlong-vectors.html, which in turn is based on 
+<http://www.movable-type.co.uk/scripts/latlong-vectors.html>, which in turn is based on 
 "A Non-singular Horizontal Position Representation" by Kenneth Gade, THE JOURNAL OF 
 NAVIGATION (2010), 63, 395–417.
-http://www.navlab.net/Publications/A_Nonsingular_Horizontal_Position_Representation.pdf
+<http://www.navlab.net/Publications/A_Nonsingular_Horizontal_Position_Representation.pdf>
 
 
 "pt1" is the current approximation for the result on "path1".  The vector "nv1" is the 
@@ -206,7 +206,8 @@ rayPath pt1 bearing elevation = Path ray alwaysValid
 -- | Rhumb line: path following a constant course. Also known as a loxodrome.
 --
 -- The valid range stops a few arc-minutes short of the poles to ensure that the 
--- polar singularities are not included.
+-- polar singularities are not included. Anyone using a rhumb line that close to a pole
+-- must be going round the twist anyway.
 --
 -- Based on *Practical Sailing Formulas for Rhumb-Line Tracks on an Oblate Earth* 
 -- by G.H. Kaplan, U.S. Naval Observatory. Except for points close to the poles 

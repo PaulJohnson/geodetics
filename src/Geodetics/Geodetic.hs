@@ -227,7 +227,7 @@ geometricalDistanceSq g1 g2 = (x1-x2) ^ pos2 + (y1-y2) ^ pos2 + (z1-z2) ^ pos2
 -- Uses Vincenty's formula. \"Direct and inverse solutions of
 -- geodesics on the ellipsoid with application of nested
 -- equations\". T. Vincenty. Survey Review XXII 176, April
--- 1975. http://www.ngs.noaa.gov/PUBS_LIB/inverse.pdf
+-- 1975. <http://www.ngs.noaa.gov/PUBS_LIB/inverse.pdf>
 groundDistance :: (Ellipsoid e) => Geodetic e -> Geodetic e ->
                   Maybe (Length Double, Dimensionless Double, Dimensionless Double)
 groundDistance p1 p2 = do
