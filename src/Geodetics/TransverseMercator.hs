@@ -11,7 +11,7 @@ import Geodetics.Ellipsoids
 import Geodetics.Geodetic
 import Geodetics.Grid
 import Numeric.Units.Dimensional.Prelude
-import qualified Prelude as P
+import Prelude ()
 
 -- | A Transverse Mercator projection gives an approximate mapping of the ellipsoid on to a 2-D grid. It models
 -- a sheet curved around the ellipsoid so that it touches it at one north-south line (hence making it part of
@@ -83,7 +83,7 @@ instance (Ellipsoid e) => GridClass (GridTM e) e where
             
             
       where
-         GridPoint east' north' _ _ = (falseOrigin grid) `applyOffset` p
+         GridPoint east' north' _ _ = falseOrigin grid `applyOffset` p
          lat' = fst $ head $ dropWhile ((> 0.01 *~ milli meter) . snd) 
                $ tail $ iterate next (latitude $ trueOrigin grid, 1 *~ meter) 
             where
@@ -104,7 +104,7 @@ instance (Ellipsoid e) => GridClass (GridTM e) e where
          grid = gridBasis p
          
    toGrid grid geo = applyOffset (off  `mappend` (offsetNegate $ falseOrigin grid)) $ 
-                     GridPoint (0 *~ metre) (0 *~ metre) (0 *~ metre) grid
+                     GridPoint _0 _0 _0 grid
       where
          v = aF0 / sqrt (_1 - e2 * sinLat2)
          rho = aF0 * (_1 - e2) * (_1 - e2 * sinLat2) ** ((-1.5) *~ one)

@@ -42,7 +42,7 @@ module Geodetics.Ellipsoids (
 import Data.Monoid
 import Numeric.Units.Dimensional
 import Numeric.Units.Dimensional.Prelude
-import qualified Prelude as P
+import Prelude ()  -- Numeric instances.
 
 
 -- | 3d vector as @(X,Y,Z)@.

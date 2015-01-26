@@ -3,7 +3,6 @@ module Geodetics.Altitude (
 ) where
 
 import Numeric.Units.Dimensional.Prelude
-import qualified Prelude as P
 
 -- | All geographical coordinate systems need the concept of altitude above a reference point, usually associated with
 -- local sea level.

@@ -15,7 +15,7 @@ import Geodetics.Ellipsoids
 import Geodetics.Geodetic
 import Geodetics.Grid
 import Numeric.Units.Dimensional.Prelude
-import qualified Prelude as P
+import Prelude ()
 
 
 -- | A stereographic projection with its origin at an arbitrary point on Earth, other than the poles.

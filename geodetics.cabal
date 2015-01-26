@@ -1,5 +1,5 @@
 name:           geodetics
-version:        0.0.2
+version:        0.0.3
 cabal-version:  >= 1.10
 build-type:     Simple
 author:         Paul Johnson <paul@cogito.org.uk>
@@ -9,8 +9,8 @@ data-files:
                 README.md, 
                 ToDo.txt
 license:        BSD3
-copyright:      Paul Johnson 2014.
-synopsis:       Terrestrial coordinate systems and associated calculations.
+copyright:      Paul Johnson 2015.
+synopsis:       Terrestrial coordinate systems and geodetic calculations.
 description:    Precise geographical coordinates (latitude & longitude), with conversion between
                 different reference frames and projections.
                 .
@@ -21,7 +21,7 @@ license-file:   LICENSE
 maintainer:     Paul Johnson <paul@cogito.org.uk>
 homepage:       https://github.com/PaulJohnson/geodetics
 category:       Geography
-tested-with:    GHC==7.6.3
+tested-with:    GHC==7.8.3
 
 source-repository head
   type:     git
@@ -30,7 +30,7 @@ source-repository head
 library
   hs-source-dirs:  src
   build-depends:   
-                   base >= 4.6 && < 4.7,
+                   base >= 4.6 && < 4.8,
                    dimensional == 0.13.*,
                    array >= 0.4
   ghc-options:     -Wall

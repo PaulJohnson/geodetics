@@ -6,7 +6,7 @@ import Control.Monad
 import Geodetics.Ellipsoids
 import Geodetics.Geodetic
 import Numeric.Units.Dimensional.Prelude
-import qualified Prelude as P
+import Prelude ()
 
 
 -- | Lower and upper exclusive bounds within which a path is valid. 
