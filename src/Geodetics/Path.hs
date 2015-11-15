@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeOperators, TypeFamilies, FlexibleContexts #-}
 -- | The implementation assumes IEEE 754 arithmetic.
 
 module Geodetics.Path where

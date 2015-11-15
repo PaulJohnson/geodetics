@@ -31,7 +31,7 @@ library
   hs-source-dirs:  src
   build-depends:   
                    base >= 4.6,
-                   dimensional >= 0.13,
+                   dimensional >= 1.0,
                    array >= 0.4
   ghc-options:     -Wall
   exposed-modules: 
