@@ -16,7 +16,6 @@ module Geodetics.LatLongParser (
    latLong
 ) where
 
-import Control.Applicative
 import Control.Monad
 import Data.Char
 import Text.ParserCombinators.ReadP as P

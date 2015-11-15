@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances, RankNTypes, KindSignatures, DataKinds #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 
 -- | Orphan "Arbitrary" and related instances for testing purposes. 
@@ -15,13 +15,14 @@ import Geodetics.Path
 import Geodetics.Stereographic as SG
 import Geodetics.TransverseMercator as TM
 import Numeric.Units.Dimensional.Prelude
-import qualified Prelude as P
+import qualified Prelude ()
 import Test.QuickCheck
 
 
 
 -- | Shrink using a dimension, so that shrunk values are round numbers in that dimension.
-shrinkDimension :: (Fractional a, Arbitrary a) => Unit d a -> Quantity d a -> [Quantity d a]
+shrinkDimension :: forall a (d :: Dimension) (m :: Metricality) .
+                   (Fractional a, Arbitrary a) => Unit m d a -> Quantity d a -> [Quantity d a]
 shrinkDimension u v = (*~ u) <$> shrink (v /~ u)
 
 -- | Wrapper for arbitrary angles.
@@ -114,7 +115,8 @@ shrink' :: (Arbitrary a) => a -> [a]
 shrink' x = x : shrink x
 
 -- | Shrink a quantity in the given units.
-shrinkQuantity :: (Arbitrary a, Fractional a) => Unit d a -> Quantity d a -> [Quantity d a]
+shrinkQuantity :: forall a (d :: Dimension) (m :: Metricality).
+                  (Arbitrary a, Fractional a) => Unit m d a -> Quantity d a -> [Quantity d a]
 shrinkQuantity u q = map (*~ u) $ shrink' $ q /~ u
 
 shrinkLength :: (Arbitrary a, Fractional a) => Length a -> [Length a]

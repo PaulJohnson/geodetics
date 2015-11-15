@@ -155,7 +155,7 @@ ukPoints = [
 
 -- Convert a named point into a test
 pointTest :: (Ellipsoid e2) => (String, Geodetic WGS84, Geodetic e2) -> Test
-pointTest (name, wgs84, local) =  testCase name $ HU.assertBool "" $ samePlace wgs84 (toWGS84 local)
+pointTest (testName, wgs84, local) =  testCase testName $ HU.assertBool "" $ samePlace wgs84 (toWGS84 local)
 
 
 -- The negation of the sum of a list of offsets is equal to the sum of the negated items.
@@ -210,22 +210,22 @@ type GridPointTest = (String, GridPoint UkNationalGrid, Geodetic WGS84, String) 
 
 -- | Check that grid reference to grid point works for sample points.
 ukGridTest2 :: GridPointTest
-ukGridTest2 (gridRef, gp, _, name) = testCase name $ HU.assertBool "" 
+ukGridTest2 (gridRef, gp, _, testName) = testCase testName $ HU.assertBool "" 
    $ (fst $ fromJust $ fromUkGridReference gridRef) == gp
 
 -- | Check that grid point to grid reference works for sample points.
 ukGridTest3 :: GridPointTest
-ukGridTest3 (gridRef, gp, _, name) = testCase name $ HU.assertBool "" 
+ukGridTest3 (gridRef, gp, _, testName) = testCase testName $ HU.assertBool "" 
    $ toUkGridReference 5 gp == Just gridRef
 
 -- | Check that grid point to WGS84 works close enough for sample points. 
 ukGridTest4 :: GridPointTest
-ukGridTest4 (_, gp, geo, name) = testCase name $ HU.assertBool ""
+ukGridTest4 (_, gp, geo, testName) = testCase testName $ HU.assertBool ""
    $ closeEnough geo $ toWGS84 $ fromGrid gp
    
 -- | Check that WGS84 to grid point works close enough for sample points.
 ukGridTest5 :: GridPointTest
-ukGridTest5 (_, gp, geo, name) = testCase name $ HU.assertBool ""
+ukGridTest5 (_, gp, geo, testName) = testCase testName $ HU.assertBool ""
    $ offsetDistance (gridOffset gp $ toGrid UkNationalGrid $ toLocal OSGB36 geo) < 1 *~ meter
 
 
@@ -308,7 +308,7 @@ prop_stereographic :: GridPoint (GridStereo LocalEllipsoid) -> Property
 prop_stereographic p =
    let g = fromGrid p
        r = toGrid (gridBasis p) g
-   in printTestCase ("p = " ++ show p ++ "\ng = " ++ show g ++ "\nr = " ++ show r) $
+   in counterexample ("p = " ++ show p ++ "\ng = " ++ show g ++ "\nr = " ++ show r) $
      closeGrid p r 
 
 
@@ -330,7 +330,7 @@ type ContinuityTest1 e = Geodetic e -> Bearing -> Distance2 -> Distance2 -> Prop
 prop_pathContinuity :: (Ellipsoid e) =>
    (Geodetic e -> Angle Double -> Angle Double -> Path e) -> ContinuityTest e
 prop_pathContinuity pf pt0 (Bearing b0) (Azimuth a0) (Distance d1) (Distance d2) =
-   printTestCase (show ((pt2, Bearing b2, Azimuth a2), (pt3, Bearing b3, Azimuth a3))) $
+   counterexample (show ((pt2, Bearing b2, Azimuth a2), (pt3, Bearing b3, Azimuth a3))) $
       pathValidAt path0 d1 && pathValidAt path0 d2 && pathValidAt path0 (d1+d2) ==>
       closeEnough pt2 pt3 && sameAngle b2 b3 && sameAngle a2 a3
    where
@@ -345,7 +345,7 @@ prop_pathContinuity pf pt0 (Bearing b0) (Azimuth a0) (Distance d1) (Distance d2)
 -- where lower accuracy is required.
 prop_pathContinuity1 :: (Ellipsoid e) => (Geodetic e -> Angle Double -> Path e) -> ContinuityTest1 e
 prop_pathContinuity1 pf pt0 (Bearing b0) (Distance2 d1) (Distance2 d2) =
-   printTestCase (show ((pt2, Bearing b2), (pt3, Bearing b3))) $
+   counterexample (show ((pt2, Bearing b2), (pt3, Bearing b3))) $
       pathValidAt path0 d1 && pathValidAt path0 d2 && pathValidAt path0 (d1+d2) ==>
       closeEnough pt2 pt3 && sameAngle b2 b3
    where
@@ -385,7 +385,7 @@ prop_rhumbIntersect rp =
       Just (d1, d2) ->
          let (pt1, _, _) = pathFunc path1 d1
              (pt2, _, _) = pathFunc path2 d2
-         in printTestCase (show (pt1, pt2)) $ label "Intersection" $ samePlace pt1 pt2
+         in counterexample (show (pt1, pt2)) $ label "Intersection" $ samePlace pt1 pt2
       Nothing -> label "No intersection" True
    where
       (path1, path2) = mk2RhumbPaths rp

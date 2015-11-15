@@ -43,7 +43,6 @@ import Data.Monoid
 import Numeric.Units.Dimensional
 import Numeric.Units.Dimensional.Prelude
 import Prelude ()  -- Numeric instances.
-import qualified Numeric.Units.Dimensional.Variants as V
 
 
 -- | 3d vector as @(X,Y,Z)@.

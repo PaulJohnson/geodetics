@@ -26,3 +26,5 @@ Version 0.0.2: Tided up cabal file and removed spurious dependency on Parsec.
 
 Version 0.0.3: Updated for Haskell Platform 2014.2.0.0 and GHC 7.8.3. Fixed
    some minor documentation issues.
+
+Version 0.0.4: Updated for Dimensional 1.0.
