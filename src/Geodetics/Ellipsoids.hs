@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, TypeOperators, TypeFamilies #-}
 
 {- | An Ellipsoid is a reasonable best fit for the surface of the 
 Earth over some defined area. WGS84 is the standard used for the whole
@@ -43,6 +43,7 @@ import Data.Monoid
 import Numeric.Units.Dimensional
 import Numeric.Units.Dimensional.Prelude
 import Prelude ()  -- Numeric instances.
+import qualified Numeric.Units.Dimensional.Variants as V
 
 
 -- | 3d vector as @(X,Y,Z)@.
@@ -53,8 +54,8 @@ type Matrix3 a = Vec3 (Vec3 a)
 
 
 -- | Multiply a vector by a scalar.
-scale3 :: (Num a, Mul d d' d'') =>
-   Vec3 (Dimensional DQuantity d a) -> Dimensional DQuantity d' a -> Vec3 (Dimensional DQuantity d'' a)
+scale3 :: (Num a) =>
+   Vec3 (Quantity d a) -> Quantity d' a -> Vec3 (Quantity (d * d') a)
 scale3 (x,y,z) s = (x*s, y*s, z*s)
 
 
@@ -68,16 +69,16 @@ add3 (x1,y1,z1) (x2,y2,z2) = (x1+x2, y1+y2, z1+z2)
 
 
 -- | Multiply a matrix by a vector in the Dimensional type system.
-transform3 :: (Num a, Mul d d' d'') => 
-   Matrix3 (Dimensional DQuantity d a) -> Vec3 (Dimensional DQuantity d' a) -> Vec3 (Dimensional DQuantity d'' a) 
+transform3 :: (Num a) =>
+   Matrix3 (Quantity d a) -> Vec3 (Quantity d' a) -> Vec3 (Quantity (d*d') a)
 transform3 (tx,ty,tz) v = (t tx v, t ty v, t tz v)
    where
       t (x1,y1,z1) (x2,y2,z2) = x1*x2 + y1*y2 + z1*z2
 
 
 -- | Inverse of a 3x3 matrix.
-invert3 :: (Fractional a, Mul d d d2, Mul d2 d d3, Div  d2 d3 d1') => 
-   Matrix3 (Dimensional DQuantity d a) -> Matrix3 (Dimensional DQuantity d1' a)
+invert3 :: (Fractional a) =>
+   Matrix3 (Quantity d a) -> Matrix3 (Quantity ((d*d)/(d*d*d)) a)
 invert3 ((x1,y1,z1),
          (x2,y2,z2),
          (x3,y3,z3)) =
@@ -94,13 +95,13 @@ trans3 ((x1,y1,z1),(x2,y2,z2),(x3,y3,z3)) = ((x1,x2,x3),(y1,y2,y3),(z1,z2,z3))
 
 
 -- | Dot product of two vectors
-dot3 :: (Num a, Mul d1 d2 d3) => 
-   Vec3 (Dimensional DQuantity d1 a) -> Vec3 (Dimensional DQuantity d2 a) -> Dimensional DQuantity d3 a
+dot3 :: (Num a) =>
+   Vec3 (Quantity d1 a) -> Vec3 (Quantity d2 a) -> Quantity (d1 * d2) a
 dot3 (x1,y1,z1) (x2,y2,z2) = x1*x2 + y1*y2 + z1*z2
 
 -- | Cross product of two vectors
-cross3 :: (Num a, Mul d1 d2 d3) => 
-   Vec3 (Dimensional DQuantity d1 a) -> Vec3 (Dimensional DQuantity d2 a) -> Vec3 (Dimensional DQuantity d3 a)
+cross3 :: (Num a) =>
+   Vec3 (Quantity d1 a) -> Vec3 (Quantity d2 a) -> Vec3 (Quantity (d1 * d2) a)
 cross3 (x1,y1,z1) (x2,y2,z2) = (y1*z2 - z1*y2, z1*x2 - x1*z2, x1*y2 - y1*x2)
 
 

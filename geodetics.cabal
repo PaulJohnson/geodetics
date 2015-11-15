@@ -30,8 +30,8 @@ source-repository head
 library
   hs-source-dirs:  src
   build-depends:   
-                   base >= 4.6 && < 4.8,
-                   dimensional == 0.13.*,
+                   base >= 4.6,
+                   dimensional >= 1.0,
                    array >= 0.4
   ghc-options:     -Wall
   exposed-modules: 
@@ -50,10 +50,10 @@ test-suite GeodeticTest
   type:            exitcode-stdio-1.0
   main-is:         Main.hs
   x-uses-tf:       true
-  build-depends:   
+  build-depends:
                    base >= 4,
-                   HUnit >= 1.2 && < 2,
-                   dimensional == 0.13.*,
+                   HUnit >= 1.2,
+                   dimensional >= 0.13,
                    QuickCheck >= 2.4,
                    test-framework >= 0.4.1,
                    test-framework-quickcheck2,
