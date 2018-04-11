@@ -26,7 +26,7 @@ import Data.Function
 import Data.Monoid
 import Geodetics.Altitude
 import Geodetics.Geodetic
-import Numeric.Units.Dimensional.Prelude
+import Numeric.Units.Dimensional.Prelude hiding ((.))
 import qualified Prelude as P
 
 -- | A Grid is a two-dimensional projection of the ellipsoid onto a plane. Any given type of grid can

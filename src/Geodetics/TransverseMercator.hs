@@ -10,7 +10,7 @@ import Data.Monoid
 import Geodetics.Ellipsoids
 import Geodetics.Geodetic
 import Geodetics.Grid
-import Numeric.Units.Dimensional.Prelude
+import Numeric.Units.Dimensional.Prelude hiding ((.))
 import Prelude ()
 
 -- | A Transverse Mercator projection gives an approximate mapping of the ellipsoid on to a 2-D grid. It models
