@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
 module Main where
 
@@ -12,6 +13,8 @@ import Test.Framework.Providers.HUnit
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 import qualified Test.HUnit as HU
 import Test.QuickCheck
+import Test.QuickCheck.Checkers (EqProp, eq, (=-=), unbatch)
+import Test.QuickCheck.Classes (monoid)
 
 import ArbitraryInstances
 import Geodetics.Altitude
@@ -37,6 +40,20 @@ main = do
    }
 
    defaultMainWithOpts tests my_runner_opts
+
+instance EqProp GridOffset where
+  (GridOffset a b c) =-= (GridOffset a' b' c') =
+    eq True $ a ≈ a' && b ≈ b' && c ≈ c'
+    where x ≈ y = abs (x - y) < 0.00001 *~ meter
+
+instance EqProp Helmert where
+  (Helmert cX' cY' cZ' s rX' rY' rZ') =-= (Helmert cX'' cY'' cZ'' s' rX'' rY'' rZ'') =
+    eq True $ and [cX' ≈ cX'', cY' ≈ cY'', cZ' ≈ cZ'',
+                   s ≈- s',
+                   rX' ≈- rX'', rY' ≈- rY'', rZ' ≈- rZ'']
+
+    where x ≈ y = abs (x - y) < 0.00001 *~ meter
+          x ≈- y = abs (x - y) < (_1 / (_5 * _2) ** (_5))
 
 tests :: [Test]
 tests = [
@@ -69,7 +86,9 @@ tests = [
       testProperty "Ray Bisection" prop_rayBisect,
       testProperty "Rhumb Continuity" prop_rhumbContinuity,
       testProperty "Rhumb Intersection" prop_rhumbIntersect
-      ]
+      ],
+   testGroup "GridOffset" $ map (uncurry testProperty) $ unbatch $ monoid (mempty :: GridOffset),
+   testGroup "Helmert" $ map (uncurry testProperty) $ unbatch $ monoid (mempty :: Helmert)
    ]
 
 
