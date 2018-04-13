@@ -111,7 +111,7 @@ data Helmert = Helmert {
    rX, rY, rZ :: Dimensionless Double } deriving (Eq, Show)
 
 instance Monoid Helmert where
-   mempty = Helmert (0 *~ meter) (0 *~ meter) (0 *~ meter) _1 _0 _0 _0
+   mempty = Helmert (0 *~ meter) (0 *~ meter) (0 *~ meter) _0 _0 _0 _0
    mappend h1 h2 = Helmert (cX h1 + cX h2) (cY h1 + cY h2) (cZ h1 + cZ h2)
                            (helmertScale h1 + helmertScale h2)
                            (rX h1 + rX h2) (rY h1 + rY h2) (rZ h1 + rZ h2)
