@@ -40,6 +40,8 @@ module Geodetics.Ellipsoids (
 ) where
 
 import Data.Monoid
+import Data.Monoid (Monoid)
+import Data.Semigroup (Semigroup, (<>))
 import Numeric.Units.Dimensional
 import Numeric.Units.Dimensional.Prelude
 import Prelude ()  -- Numeric instances.
@@ -110,12 +112,14 @@ data Helmert = Helmert {
    helmertScale :: Dimensionless Double,  -- ^ Parts per million
    rX, rY, rZ :: Dimensionless Double } deriving (Eq, Show)
 
+instance Semigroup Helmert where
+    h1 <> h2 = Helmert (cX h1 + cX h2) (cY h1 + cY h2) (cZ h1 + cZ h2)
+                       (helmertScale h1 + helmertScale h2)
+                       (rX h1 + rX h2) (rY h1 + rY h2) (rZ h1 + rZ h2)
+
 instance Monoid Helmert where
    mempty = Helmert (0 *~ meter) (0 *~ meter) (0 *~ meter) _0 _0 _0 _0
-   mappend h1 h2 = Helmert (cX h1 + cX h2) (cY h1 + cY h2) (cZ h1 + cZ h2)
-                           (helmertScale h1 + helmertScale h2)
-                           (rX h1 + rX h2) (rY h1 + rY h2) (rZ h1 + rZ h2)
-
+   mappend = (<>)
 
 -- | The inverse of a Helmert transformation.
 inverseHelmert :: Helmert -> Helmert

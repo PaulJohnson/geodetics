@@ -23,7 +23,8 @@ module Geodetics.Grid (
 
 import Data.Char
 import Data.Function
-import Data.Monoid
+import Data.Monoid (Monoid)
+import Data.Semigroup (Semigroup, (<>))
 import Geodetics.Altitude
 import Geodetics.Geodetic
 import Numeric.Units.Dimensional.Prelude hiding ((.))
@@ -69,11 +70,14 @@ data GridOffset = GridOffset {
    deltaEast, deltaNorth, deltaAltitude :: Length Double
 } deriving (Eq, Show)
 
+instance Semigroup GridOffset where
+  g1 <> g2 = GridOffset (deltaEast g1 + deltaEast g2)
+                        (deltaNorth g1 + deltaNorth g2)
+                        (deltaAltitude g1 + deltaAltitude g2)
+
 instance Monoid GridOffset where
    mempty = GridOffset _0 _0 _0
-   mappend g1 g2 = GridOffset (deltaEast g1 + deltaEast g2) 
-                              (deltaNorth g1 + deltaNorth g2) 
-                              (deltaAltitude g1 + deltaAltitude g2) 
+   mappend = (<>)
 
 -- | An offset defined by a distance and a bearing to the right of North.
 --
