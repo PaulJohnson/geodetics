@@ -39,7 +39,6 @@ module Geodetics.Ellipsoids (
    cross3
 ) where
 
-import Data.Monoid
 import Data.Monoid (Monoid)
 import Data.Semigroup (Semigroup, (<>))
 import Numeric.Units.Dimensional
