@@ -26,7 +26,7 @@ import Data.Monoid
 import Geodetics.Altitude
 import Geodetics.Ellipsoids
 import Geodetics.LatLongParser
-import Numeric.Units.Dimensional.Prelude
+import Numeric.Units.Dimensional.Prelude hiding ((.))
 import Text.ParserCombinators.ReadP
 import qualified Prelude as P
 
