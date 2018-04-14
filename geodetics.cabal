@@ -50,7 +50,7 @@ test-suite GeodeticTest
   type:            exitcode-stdio-1.0
   main-is:         Main.hs
   x-uses-tf:       true
-  build-depends:
+  build-depends:   geodetics,
                    base >= 4.6 && < 5,
                    HUnit >= 1.2,
                    dimensional >= 0.13,
@@ -66,5 +66,14 @@ test-suite GeodeticTest
   ghc-options:     -Wall -rtsopts
   other-modules:   
                    ArbitraryInstances,
-                   Main
+                   Main,
+                   Geodetics.Altitude,
+                   Geodetics.Ellipsoids
+                   Geodetics.Geodetic,
+                   Geodetics.Grid,
+                   Geodetics.LatLongParser,
+                   Geodetics.Path,
+                   Geodetics.Stereographic,
+                   Geodetics.TransverseMercator,
+                   Geodetics.UK
   Default-Language: Haskell2010
