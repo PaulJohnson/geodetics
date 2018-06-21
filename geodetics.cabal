@@ -61,19 +61,8 @@ test-suite GeodeticTest
                    array >= 0.4,
                    checkers
   hs-source-dirs:  
-                   src, 
                    test
   ghc-options:     -Wall -rtsopts
   other-modules:   
-                   ArbitraryInstances,
-                   Main,
-                   Geodetics.Altitude,
-                   Geodetics.Ellipsoids
-                   Geodetics.Geodetic,
-                   Geodetics.Grid,
-                   Geodetics.LatLongParser,
-                   Geodetics.Path,
-                   Geodetics.Stereographic,
-                   Geodetics.TransverseMercator,
-                   Geodetics.UK
+                   ArbitraryInstances
   Default-Language: Haskell2010
