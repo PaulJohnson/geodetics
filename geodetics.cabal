@@ -30,9 +30,11 @@ source-repository head
 library
   hs-source-dirs:  src
   build-depends:   
-                   base >= 4.6 && < 5,
+                   base >= 4.7 && < 5,
                    dimensional >= 1.0,
                    array >= 0.4
+  if !impl(ghc>=8.0)
+    build-depends: semigroups >= 0.9 && < 0.19
   ghc-options:     -Wall
   exposed-modules: 
                    Geodetics.Altitude,
