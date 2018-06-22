@@ -30,9 +30,11 @@ source-repository head
 library
   hs-source-dirs:  src
   build-depends:   
-                   base >= 4.6 && < 5,
+                   base >= 4.7 && < 5,
                    dimensional >= 1.0,
                    array >= 0.4
+  if !impl(ghc>=8.0)
+    build-depends: semigroups >= 0.9 && < 0.19
   ghc-options:     -Wall
   exposed-modules: 
                    Geodetics.Altitude,
@@ -61,19 +63,8 @@ test-suite GeodeticTest
                    array >= 0.4,
                    checkers
   hs-source-dirs:  
-                   src, 
                    test
   ghc-options:     -Wall -rtsopts
   other-modules:   
-                   ArbitraryInstances,
-                   Main,
-                   Geodetics.Altitude,
-                   Geodetics.Ellipsoids
-                   Geodetics.Geodetic,
-                   Geodetics.Grid,
-                   Geodetics.LatLongParser,
-                   Geodetics.Path,
-                   Geodetics.Stereographic,
-                   Geodetics.TransverseMercator,
-                   Geodetics.UK
+                   ArbitraryInstances
   Default-Language: Haskell2010
