@@ -7,9 +7,10 @@ data-files:
                 AddingProjections.txt,
                 LICENSE,
                 README.md,
+                changelog.md,
                 ToDo.txt
 license:        BSD3
-copyright:      Paul Johnson 2015.
+copyright:      Paul Johnson 2018.
 synopsis:       Terrestrial coordinate systems and geodetic calculations.
 description:    Precise geographical coordinates (latitude & longitude), with conversion between
                 different reference frames and projections.
@@ -30,7 +31,7 @@ source-repository head
 library
   hs-source-dirs:  src
   build-depends:
-                   base >= 4.7,
+                   base >= 4.6 && < 5,
                    dimensional >= 1.3,
                    array >= 0.4,
                    semigroups >= 0.9
@@ -52,7 +53,7 @@ test-suite GeodeticTest
   main-is:         Main.hs
   x-uses-tf:       true
   build-depends:   geodetics,
-                   base >= 4.6,
+                   base >= 4.6 && < 5,
                    HUnit >= 1.2,
                    dimensional >= 1.3,
                    QuickCheck >= 2.4,
