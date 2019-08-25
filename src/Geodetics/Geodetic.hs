@@ -33,24 +33,24 @@ import qualified Prelude as P
 -- | Defines a three-D position on or around the Earth using latitude,
 -- longitude and altitude with respect to a specified ellipsoid, with
 -- positive directions being North and East.  The default "show"
--- instance gives position in degrees, minutes and seconds to 5 decimal 
+-- instance gives position in degrees, minutes and seconds to 5 decimal
 -- places, which is a
 -- resolution of about 1m on the Earth's surface. Internally latitude
 -- and longitude are stored as double precision radians. Convert to
 -- degrees using e.g.  @latitude g /~ degree@.
--- 
+--
 -- The functions here deal with altitude by assuming that the local
 -- height datum is always co-incident with the ellipsoid in use,
 -- even though the \"mean sea level\" (the usual height datum) can be tens
 -- of meters above or below the ellipsoid, and two ellipsoids can
 -- differ by similar amounts. This is because the altitude is
 -- usually known with reference to a local datum regardless of the
--- ellipsoid in use, so it is simpler to preserve the altitude across 
+-- ellipsoid in use, so it is simpler to preserve the altitude across
 -- all operations. However if
 -- you are working with ECEF coordinates from some other source then
 -- this may give you the wrong results, depending on the altitude
 -- correction your source has used.
--- 
+--
 -- There is no "Eq" instance because comparing two arbitrary
 -- co-ordinates on the Earth is a non-trivial exercise. Clearly if all
 -- the parameters are equal on the same ellipsoid then they are indeed
@@ -68,42 +68,42 @@ data (Ellipsoid e) => Geodetic e = Geodetic {
 instance (Ellipsoid e) => Show (Geodetic e) where
    show g = concat [
       showAngle (abs $ latitude g),  " ", letter "SN" (latitude g),  ", ",
-      showAngle (abs $ longitude g), " ", letter "WE" (longitude g), ", ", 
+      showAngle (abs $ longitude g), " ", letter "WE" (longitude g), ", ",
       show (altitude g), " ", show (ellipsoid g)]
       where letter s n = [s !! (if n < _0 then 0 else 1)]
 
 
 
--- | Read the latitude and longitude of a ground position and 
+-- | Read the latitude and longitude of a ground position and
 -- return a Geodetic position on the specified ellipsoid.
--- 
+--
 -- The latitude and longitude may be in any of the following formats.
--- The comma between latitude and longitude is optional in all cases. 
+-- The comma between latitude and longitude is optional in all cases.
 -- Latitude must always be first.
--- 
+--
 -- * Signed decimal degrees: 34.52327, -46.23234
--- 
+--
 -- * Decimal degrees NSEW: 34.52327N, 46.23234W
 --
--- * Degrees and decimal minutes (units optional): 34° 31.43' N, 46° 13.92' 
--- 
--- * Degrees, minutes and seconds (units optional): 34° 31' 23.52\" N, 46° 13' 56.43\" W 
--- 
+-- * Degrees and decimal minutes (units optional): 34° 31.43' N, 46° 13.92'
+--
+-- * Degrees, minutes and seconds (units optional): 34° 31' 23.52\" N, 46° 13' 56.43\" W
+--
 -- * DDDMMSS format with optional leading zeros: 343123.52N, 0461356.43W
 readGroundPosition :: (Ellipsoid e) => e -> String -> Maybe (Geodetic e)
-readGroundPosition e str = 
+readGroundPosition e str =
    case map fst $ filter (null . snd) $ readP_to_S latLong str of
       [] -> Nothing
       (lat,long) : _ -> Just $ groundPosition $ Geodetic (lat *~ degree) (long *~ degree) undefined e
-      
-      
+
+
 -- | Show an angle as degrees, minutes and seconds to two decimal places.
 showAngle :: Angle Double -> String
 showAngle a
    | isNaN a1       = "NaN"  -- Not a Nangle
    | isInfinite a1  = sgn ++ "Infinity"
-   | otherwise      = concat [sgn, show d, [chr 0xB0, ' '], 
-                              show m, "' ", 
+   | otherwise      = concat [sgn, show d, [chr 0xB0, ' '],
+                              show m, "' ",
                               show s, ".", dstr, "\"" ]
    where
       a1 = a /~ one
@@ -114,14 +114,14 @@ showAngle a
       (m, s1) = m1 `P.divMod` 6000   -- hundredths of arcsec per arcmin
       (s, ds) = s1 `P.divMod` 100
       dstr = reverse $ take 2 $ reverse (show ds) ++ "00" -- Decimal fraction with zero padding.
-         
+
 
 instance (Ellipsoid e) => HasAltitude (Geodetic e) where
    altitude = geoAlt
    setAltitude h g = g{geoAlt = h}
 
-   
-   
+
+
 -- | The point on the Earth diametrically opposite the argument, with
 -- the same altitude.
 antipode :: (Ellipsoid e) => Geodetic e -> Geodetic e
@@ -130,10 +130,10 @@ antipode g = Geodetic lat long (geoAlt g) (ellipsoid g)
       lat = negate $ latitude g
       long' = longitude g - 180 *~ degree
       long | long' < _0  = long' + 360 *~ degree
-           | otherwise  = long' 
+           | otherwise  = long'
 
-   
-   
+
+
 -- | Convert a geodetic coordinate into earth centered, relative to the
 -- ellipsoid in use.
 geoToEarth :: (Ellipsoid e) => Geodetic e -> ECEF
@@ -141,7 +141,7 @@ geoToEarth geo = (
       (n + h) * coslat * coslong,
       (n + h) * coslat * sinlong,
       (n * (_1 - eccentricity2 e) + h) * sinlat)
-   where 
+   where
       n = normal e $ latitude geo
       e = ellipsoid geo
       coslat = cos $ latitude geo
@@ -151,7 +151,7 @@ geoToEarth geo = (
       h = altitude geo
 
 
--- | Convert an earth centred coordinate into a geodetic coordinate on 
+-- | Convert an earth centred coordinate into a geodetic coordinate on
 -- the specified geoid.
 --
 -- Uses the closed form solution of H. Vermeille: Direct
@@ -199,9 +199,9 @@ toWGS84 g = Geodetic lat lon alt WGS84
       h = helmert (ellipsoid g)
 
 
--- | The absolute distance in a straight line between two geodetic 
+-- | The absolute distance in a straight line between two geodetic
 -- points. They must be on the same ellipsoid.
--- Note that this is not the geodetic distance taken by following 
+-- Note that this is not the geodetic distance taken by following
 -- the curvature of the earth.
 geometricalDistance :: (Ellipsoid e) => Geodetic e -> Geodetic e -> Length Double
 geometricalDistance g1 g2 = sqrt $ geometricalDistanceSq g1 g2
@@ -261,7 +261,7 @@ groundDistance p1 p2 = do
     cosU1 = cos u1
     sinU2 = sin u2
     cosU2 = cos u2
-    
+
     nextLambda lambda = (lambda1, (cos2Alpha, delta, sinDelta, cosDelta, cos2DeltaM))
       where
         sinLambda = sin lambda
@@ -270,7 +270,7 @@ groundDistance p1 p2 = do
                         (cosU1 * sinU2 - sinU1 * cosU2 * cosLambda) ^ pos2)
         cosDelta = sinU1 * sinU2 + cosU1 * cosU2 * cosLambda
         delta = atan2 sinDelta cosDelta
-        sinAlpha = cosU1 * cosU2 * sinLambda / sinDelta
+        sinAlpha = if sinDelta == _0 then _0 else cosU1 * cosU2 * sinLambda / sinDelta
         cos2Alpha = _1 - sinAlpha ^ pos2
         cos2DeltaM = if cos2Alpha == _0
                      then _0
@@ -285,14 +285,13 @@ groundDistance p1 p2 = do
 
 -- | Add or subtract multiples of 2*pi so that for all @t@, @-pi < properAngle t < pi@.
 properAngle :: Angle Double -> Angle Double
-properAngle t 
+properAngle t
    | r1 <= negate pi    = r1 + pi2
    | r1 > pi            = r1 - pi2
-   | otherwise          = r1 
+   | otherwise          = r1
    where
       pf :: Double -> (Int, Double)
       pf = properFraction  -- Shut up GHC warning about defaulting to Integer.
       (_,r) = pf (t/pi2 /~ one)
       r1 = (r *~ one) * pi2
       pi2 = pi * _2
-
