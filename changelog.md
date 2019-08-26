@@ -15,3 +15,5 @@ Version 0.0.6: Prevent attempted building on GHC 7.8 (it doesn't work)
    and fix the build on 7.10 with a conditional semigroups dependency
 
 Version 0.1.0: Updated for Dimensional 1.3 and GHC 8.6.
+
+Version 0.1.1: Fixed bug #15: for a point p, groundDistance p p
