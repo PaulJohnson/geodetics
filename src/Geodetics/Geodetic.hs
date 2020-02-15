@@ -59,7 +59,7 @@ import qualified Prelude as P
 -- physical location.  If you want to find out if two co-ordinates are
 -- the same to within a given tolerance then use "geometricDistance"
 -- (or its squared variant to avoid an extra @sqrt@ operation).
-data (Ellipsoid e) => Geodetic e = Geodetic {
+data Geodetic e = Geodetic {
    latitude, longitude :: Angle Double,
    geoAlt :: Length Double,
    ellipsoid :: e
