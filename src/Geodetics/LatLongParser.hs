@@ -21,10 +21,22 @@ import Data.Char
 import Text.ParserCombinators.ReadP as P
 
 
-
 -- | Parse an unsigned Integer value.
 natural :: ReadP Integer  -- Beware arithmetic overflow of Int
 natural = read <$> munch1 isDigit
+
+
+-- | Parse a tick sign for minutes. This accepts either the keyboard \"'\" or the unicode \"Prime\"
+-- character U+2032
+minuteTick :: ReadP ()
+minuteTick = void $ choice [char '\'', char '\8242']
+
+
+-- | Parse a double-tick sign for seconds. This accepts either the keyboard \" or the unicode
+-- \"Double Prime\" character U+2033.
+secondTick :: ReadP ()
+secondTick = void $ choice [char '"', char '\8243']
+
 
 -- | Parse an unsigned decimal value with optional decimal places but no exponent.
 decimal :: ReadP Double
@@ -73,10 +85,10 @@ degreesMinutesSecondsUnits = do
       d <- fromIntegral <$> option 0 (natural <* char '°')
       guard $ d <= 360
       skipSpaces
-      m <- fromIntegral <$> option 0 (natural <* char '\'')
+      m <- fromIntegral <$> option 0 (natural <* minuteTick)
       guard $ m < 60
       skipSpaces
-      s <- option 0 (decimal <* char '"')
+      s <- option 0 (decimal <* secondTick)
       guard $ s < 60
       return $ d + m / 60 + s / 3600
    guard $ not $ null s  -- Must specify at least one component.
@@ -100,7 +112,7 @@ degreesDecimalMinutesUnits = do
    (s, a) <- gather $ do
       d <- fromIntegral <$> option 0 (natural <* char '°')
       guard $ d <= 360
-      m <- option 0 (decimal <* char '\'')
+      m <- option 0 (decimal <* minuteTick)
       guard $ m < 60
       return $ d + m / 60
    guard $ not $ null s  -- Must specify at least one component.

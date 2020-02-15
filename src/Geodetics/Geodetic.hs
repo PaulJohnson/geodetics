@@ -103,8 +103,8 @@ showAngle a
    | isNaN a1       = "NaN"  -- Not a Nangle
    | isInfinite a1  = sgn ++ "Infinity"
    | otherwise      = concat [sgn, show d, [chr 0xB0, ' '],
-                              show m, "' ",
-                              show s, ".", dstr, "\"" ]
+                              show m, "\8242 ",
+                              show s, ".", dstr, "\8243" ]
    where
       a1 = a /~ one
       sgn = if a < _0 then "-" else ""
