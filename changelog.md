@@ -16,4 +16,7 @@ Version 0.0.6: Prevent attempted building on GHC 7.8 (it doesn't work)
 
 Version 0.1.0: Updated for Dimensional 1.3 and GHC 8.6.
 
-Version 0.1.1: Fixed bug #15: for a point p, groundDistance p p
+Version 0.1.1: Fixed bug #15: for a point p, groundDistance p p returned NaN
+
+Version 0.1.2: Fixed bugs #16 and #17: Unicode PRIME and DOUBLE PRIME now allowed in
+   position strings, and the degree symbol is allowed for decimal degrees.
