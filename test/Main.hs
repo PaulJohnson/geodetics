@@ -222,7 +222,7 @@ prop_tmGridInverse =
          , ellipsoid = WGS84
          }
        g = mkGridTM origin mempty (1 *~ one)
-       testPoint = origin { latitude = (-0.1) *~ degree }
+       testPoint = origin { latitude = (-0.02) *~ degree }
    in fromGrid (toGrid g testPoint) `closeEnough` testPoint
    
 -- | Converting a UK grid reference to a GridPoint and back is a null operation.
