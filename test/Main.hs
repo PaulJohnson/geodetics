@@ -67,6 +67,9 @@ tests = [
       testProperty "Grid Offset 2" prop_offset2,
       testProperty "Grid Offset 3" prop_offset3,
       testProperty "Grid 1" prop_grid1 ],
+   testGroup "TransverseMercator" [
+      testCase "fromGrid . toGrid == id" $ HU.assertBool "" prop_tmGridInverse
+      ],
    testGroup "UK" [
       testProperty "UK Grid 1" prop_ukGrid1,
       testGroup "UK Grid 2" $ map ukGridTest2 ukSampleGrid,
@@ -208,7 +211,20 @@ prop_offset3 delta = sameOffset delta0
 prop_grid1 :: GridPoint (GridTM LocalEllipsoid) -> GridOffset -> Bool
 prop_grid1 p d = sameOffset d $ p `gridOffset` applyOffset d p
 
-
+-- | Check that using toGrid/fromGrid for TransverseMercator projection are inverses
+-- | for negative latitudes near the coordinates 0,0
+prop_tmGridInverse :: Bool
+prop_tmGridInverse = 
+   let origin = Geodetic 
+         { latitude = 0 *~ degree
+         , longitude = 0 *~ degree
+         , geoAlt = 0 *~ meter
+         , ellipsoid = WGS84
+         }
+       g = mkGridTM origin mempty (1 *~ one)
+       testPoint = origin { latitude = (-0.1) *~ degree }
+   in fromGrid (toGrid g testPoint) `closeEnough` testPoint
+   
 -- | Converting a UK grid reference to a GridPoint and back is a null operation.
 prop_ukGrid1 :: GridRef -> Bool
 prop_ukGrid1 (GridRef str) =
