@@ -1,4 +1,4 @@
-{-# LANGUAGE MultiParamTypeClasses, FunctionalDependencies #-}
+{-# LANGUAGE FunctionalDependencies #-}
 
 module Geodetics.Grid (
    -- ** Grid types
@@ -23,8 +23,6 @@ module Geodetics.Grid (
 
 import Data.Char
 import Data.Function
-import Data.Monoid (Monoid)
-import Data.Semigroup (Semigroup, (<>))
 import Geodetics.Altitude
 import Geodetics.Geodetic
 import Numeric.Units.Dimensional.Prelude hiding ((.))
@@ -32,7 +30,7 @@ import qualified Prelude as P
 
 -- | A Grid is a two-dimensional projection of the ellipsoid onto a plane. Any given type of grid can
 -- usually be instantiated with parameters such as a tangential point or line, and these parameters
--- will include the terrestrial reference frame ("Ellipsoid" in this library) used as a foundation. 
+-- will include the terrestrial reference frame ("Ellipsoid" in this library) used as a foundation.
 -- Hence conversion from a geodetic to a grid point requires the \"basis\" for the grid in question,
 -- and grid points carry that basis with them because without it there is no defined relationship
 -- between the grid points and terrestrial positions.
@@ -42,7 +40,7 @@ class GridClass r e | r->e where
    gridEllipsoid :: r -> e
 
 
--- | A point on the specified grid. 
+-- | A point on the specified grid.
 data GridPoint r = GridPoint {
    eastings, northings, altGP :: Length Double,
    gridBasis :: r
@@ -50,9 +48,9 @@ data GridPoint r = GridPoint {
 
 
 instance Eq (GridPoint r) where
-   p1 == p2  = 
-      eastings p1 == eastings p2 && 
-      northings p1 == northings p2 && 
+   p1 == p2  =
+      eastings p1 == eastings p2 &&
+      northings p1 == northings p2 &&
       altGP p1 == altGP p2
 
 instance HasAltitude (GridPoint g) where
@@ -64,7 +62,7 @@ instance HasAltitude (GridPoint g) where
 -- | A vector relative to a point on a grid.
 -- Operations that use offsets will only give
 -- meaningful results if all the points come from the same grid.
--- 
+--
 -- The monoid instance is the sum of offsets.
 data GridOffset = GridOffset {
    deltaEast, deltaNorth, deltaAltitude :: Length Double
@@ -103,7 +101,7 @@ offsetNegate off = GridOffset (negate $ deltaEast off)
 
 -- Add an offset on to a point to get another point.
 applyOffset :: GridOffset -> GridPoint g -> GridPoint g
-applyOffset off p = GridPoint (eastings p + deltaEast off) 
+applyOffset off p = GridPoint (eastings p + deltaEast off)
                            (northings p + deltaNorth off)
                            (altitude p + deltaAltitude off)
                            (gridBasis p)
@@ -116,23 +114,23 @@ offsetDistance = sqrt . offsetDistanceSq
 
 -- | The square of the distance represented by an offset.
 offsetDistanceSq :: GridOffset -> Area Double
-offsetDistanceSq off = 
+offsetDistanceSq off =
    deltaEast off ^ pos2 + deltaNorth off ^ pos2 + deltaAltitude off ^ pos2
 
-              
+
 -- | The direction represented by an offset, as bearing to the right of North.
 offsetBearing :: GridOffset -> Angle Double
 offsetBearing off = atan2 (deltaEast off) (deltaNorth off)
 
 
--- | The offset required to move from p1 to p2.             
+-- | The offset required to move from p1 to p2.
 gridOffset :: GridPoint g -> GridPoint g -> GridOffset
 gridOffset p1 p2 = GridOffset (eastings p2 - eastings p1)
                               (northings p2 - northings p1)
                               (altitude p2 - altitude p1)
 
 
--- | Coerce a grid point of one type into a grid point of a different type, 
+-- | Coerce a grid point of one type into a grid point of a different type,
 -- but with the same easting, northing and altitude. This is unsafe because it
 -- will produce a different position unless the two grids are actually equal.
 --
@@ -157,11 +155,11 @@ fromGridDigits :: Length Double -> String -> Maybe (Length Double, Length Double
 fromGridDigits sq ds = if all isDigit ds then Just (d, p) else Nothing
    where
       n = length ds
-      d = sum $ zipWith (*) 
-         (map ((*~ one) . fromIntegral . digitToInt) ds) 
+      d = sum $ zipWith (*)
+         (map ((*~ one) . fromIntegral . digitToInt) ds)
          (tail $ iterate (/ (10 *~ one)) sq)
       p = sq / ((10 *~ one) ** (fromIntegral n *~ one))
-      
+
 -- | Convert a distance into a digit string suitable for printing as part
 -- of a grid reference. The result is the nearest position to the specified
 -- number of digits, expressed as an integer count of squares and a string of digits.
@@ -172,7 +170,7 @@ toGridDigits ::
    -> Length Double -- ^ Offset to convert into grid.
    -> Maybe (Integer, String)
 toGridDigits sq n d =
-   if sq < (1 *~ kilo meter) || n < 0 || d < _0 
+   if sq < (1 *~ kilo meter) || n < 0 || d < _0
    then Nothing
    else
       Just (sqs, pad)
@@ -185,4 +183,3 @@ toGridDigits sq n d =
       (sqs, d1) = u `divMod` p
       s = show d1
       pad = if n == 0 then "" else replicate (n P.- length s) '0' ++ s
-      

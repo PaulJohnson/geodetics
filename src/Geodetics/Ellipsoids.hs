@@ -1,17 +1,11 @@
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# LANGUAGE PatternGuards #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RoleAnnotations #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -54,8 +48,6 @@ module Geodetics.Ellipsoids (
    cross3
 ) where
 
-import Data.Monoid (Monoid)
-import Data.Semigroup (Semigroup, (<>))
 import Numeric.Units.Dimensional
 import Numeric.Units.Dimensional.Prelude
 import qualified Numeric.Units.Dimensional.Dimensions.TypeLevel as T
