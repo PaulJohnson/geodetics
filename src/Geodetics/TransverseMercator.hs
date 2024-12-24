@@ -16,6 +16,10 @@ import Prelude ()
 -- | A Transverse Mercator projection gives an approximate mapping of the ellipsoid on to a 2-D grid. It models
 -- a sheet curved around the ellipsoid so that it touches it at one north-south line (hence making it part of
 -- a slightly elliptical cylinder).
+--
+-- The calculations here are based on \"Transverse Mercator Projection: Constants, Formulae and Methods\"
+-- by the Ordnance Survey, March 1983.
+-- Retrieved from http://www.threelittlemaids.co.uk/magdec/transverse_mercator_projection.pdf
 data GridTM e = GridTM {
    trueOrigin :: Geodetic e,
       -- ^ A point on the line where the projection touches the ellipsoid (altitude is ignored).
