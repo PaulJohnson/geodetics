@@ -5,13 +5,11 @@ module Geodetics.TransverseMercator(
    mkGridTM
 ) where
 
-import Data.Function
-import Data.Monoid
 import Geodetics.Ellipsoids
 import Geodetics.Geodetic
 import Geodetics.Grid
-import Numeric.Units.Dimensional.Prelude hiding ((.))
-import Prelude ()
+
+import qualified Data.Stream as Stream
 
 -- | A Transverse Mercator projection gives an approximate mapping of the ellipsoid on to a 2-D grid. It models
 -- a sheet curved around the ellipsoid so that it touches it at one north-south line (hence making it part of
@@ -26,12 +24,12 @@ data GridTM e = GridTM {
    falseOrigin :: GridOffset,
       -- ^ The grid position of the true origin. Used to avoid negative coordinates over
       -- the area of interest. The altitude gives a vertical offset from the ellipsoid.
-   gridScale :: Dimensionless Double,
+   gridScale :: Double,
       -- ^ A scaling factor that balances the distortion between the east & west edges and the middle
       -- of the projection.
 
    -- Remaining elements are memoised parameters computed from the ellipsoid underlying the true origin.
-   gridN1, gridN2, gridN3, gridN4 :: Dimensionless Double
+   gridN1, gridN2, gridN3, gridN4 :: Double
 } deriving (Show)
 
 
@@ -39,30 +37,28 @@ data GridTM e = GridTM {
 mkGridTM :: (Ellipsoid e) =>
    Geodetic e               -- ^ True origin.
    -> GridOffset            -- ^ Vector from true origin to false origin.
-   -> Dimensionless Double  -- ^ Scale factor.
+   -> Double                -- ^ Scale factor.
    -> GridTM e
 mkGridTM origin offset sf =
    GridTM {trueOrigin = origin,
            falseOrigin = offset,
            gridScale = sf,
-           gridN1 = _1 + n + (_5/_4) * n^pos2 + (_5/_4) * n^pos3,
-           gridN2 = _3 * n + _3 * n^pos2 + ((21*~one)/_8) * n^pos3,
-           gridN3 = ((15*~one)/_8) * (n^pos2 + n^pos3),
-           gridN4 = ((35*~one)/(24*~one)) * n^pos3
+           gridN1 = 1 + n + (5/4) * n**2 + (5/4) * n**3,
+           gridN2 = 3 * n + 3 * n**2 + (21/8) * n**3,
+           gridN3 = (15/8) * (n**2 + n**3),
+           gridN4 = (35/24) * n**3
         }
     where
        f = flattening $ ellipsoid origin
-       n = f / (_2-f)  -- Equivalent to (a-b)/(a+b) where b = (1-f)*a
-
-
+       n = f / (2-f)  -- Equivalent to (a-b)/(a+b) where b = (1-f)*a
 
 
 -- | Equation C3 from reference [1].
-m :: (Ellipsoid e) => GridTM e -> Dimensionless Double -> Length Double
+m :: (Ellipsoid e) => GridTM e -> Double -> Double
 m grid lat = bF0 * (gridN1 grid * dLat
                     - gridN2 grid * sin dLat * cos sLat
-                    + gridN3 grid * sin (_2 * dLat) * cos (_2 * sLat)
-                    - gridN4 grid * sin (_3 * dLat) * cos (_3 * sLat))
+                    + gridN3 grid * sin (2 * dLat) * cos (2 * sLat)
+                    - gridN4 grid * sin (3 * dLat) * cos (3 * sLat))
    where
       dLat = lat - latitude (trueOrigin grid)
       sLat = lat + latitude (trueOrigin grid)
@@ -71,68 +67,66 @@ m grid lat = bF0 * (gridN1 grid * dLat
 
 instance (Ellipsoid e) => GridClass (GridTM e) e where
    fromGrid p = Geodetic
-      (lat' - east' ^ pos2 * tanLat / (_2 * rho * v)  -- Term VII
-            + east' ^ pos4 * (tanLat / ((24 *~ one) * rho * v ^ pos3))
-                           * (_5 + _3 * tanLat ^ pos2 + eta2 - _9 * tanLat ^ pos2 * eta2)  -- Term VIII
-            - east' * east' ^ pos5 * (tanLat / ((720 *~ one) * rho * v ^ pos5))
-                           * (61 *~ one + (90 *~ one) * tanLat ^ pos2 + (45 *~ one) * tanLat ^ pos4)) -- Term IX
+      (lat' - east' ** 2 * tanLat / (2 * rho * v)  -- Term VII
+            + east' ** 4 * (tanLat / (24 * rho * v ** 3))
+                           * (5 + 3 * tanLat ** 2 + eta2 - 9 * tanLat ** 2 * eta2)  -- Term VIII
+            - east' ** 6 * (tanLat / (720 * rho * v ** 5))
+                           * (61 + 90 * tanLat ** 2 + 45 * tanLat ** 4)) -- Term IX
       (longitude (trueOrigin grid)
             + east' / (cosLat * v)  -- Term X
-            - (east' ^ pos3 / (_6 * cosLat * v ^ pos3)) * (v / rho + _2 * tanLat ^ pos2)  -- Term XI
-            + (east' ^ pos5 / ((120 *~ one) * cosLat * v ^ pos5))
-                 * (_5 + (28 *~ one) * tanLat ^ pos2  + (24 *~ one) * tanLat ^ pos4)  -- Term XII
-            - (east' ^ pos5 * east' ^ pos2 / ((5040 *~ one) * cosLat * v * v * v ^ pos5))
-                 * ((61 *~ one) + (662 *~ one) * tanLat ^ pos2 + (1320 *~ one) * tanLat ^ pos4 + (720 *~ one) * tanLat * tanLat ^ pos5)) -- Term XIIa
-     (0 *~ meter) (gridEllipsoid grid)
-
+            - (east' ** 3 / (6 * cosLat * v ** 3)) * (v / rho + 2 * tanLat ** 2)  -- Term XI
+            + (east' ** 5 / (120 * cosLat * v ** 5))
+                 * (5 + 28 * tanLat ** 2  + 24 * tanLat ** 4)  -- Term XII
+            - (east' ** 5 * east' ** 2 / (5040 * cosLat * v ** 7))
+                 * (61 + 662 * tanLat ** 2 + 1320 * tanLat ** 4 + 720 * tanLat ** 6)) -- Term XIIa
+     0
+     (gridEllipsoid grid)
 
       where
          GridPoint east' north' _ _ = falseOrigin grid `applyOffset` p
-         lat' = fst $ head $ dropWhile ((> 0.01 *~ milli meter) . snd)
-               $ tail $ iterate next (latitude $ trueOrigin grid, 1 *~ meter)
+         lat' = fst $ Stream.head $ Stream.dropWhile ((> 1e-5) . snd)
+               $ Stream.tail $ Stream.iterate next (latitude $ trueOrigin grid, 1)
             where
                next (phi, _) = let delta = north' - m grid phi in (phi + delta / aF0, delta)
-               -- head and tail are safe because iterate returns an infinite list.
 
          sinLat = sin lat'
          cosLat = cos lat'
          tanLat = tan lat'
-         sinLat2 = sinLat ^ pos2
-         v = aF0 / sqrt (_1 - e2 * sinLat2)
-         rho = aF0 * (_1 - e2) * (_1 - e2 * sinLat2) ** ((-1.5) *~ one)
-         eta2 = v / rho - _1
-
+         sinLat2 = sinLat * sinLat
+         v = aF0 / sqrt (1 - e2 * sinLat2)
+         rho = aF0 * (1 - e2) * (1 - e2 * sinLat2) ** (-1.5)
+         eta2 = v / rho - 1
 
          aF0 = majorRadius (gridEllipsoid grid) * gridScale grid
          e2 = eccentricity2 $ gridEllipsoid grid
          grid = gridBasis p
 
    toGrid grid geo = applyOffset (off  `mappend` offsetNegate (falseOrigin grid)) $
-                     GridPoint _0 _0 _0 grid
+                     GridPoint 0 0 0 grid
       where
-         v = aF0 / sqrt (_1 - e2 * sinLat2)
-         rho = aF0 * (_1 - e2) * (_1 - e2 * sinLat2) ** ((-1.5) *~ one)
-         eta2 = v / rho - _1
+         v = aF0 / sqrt (1 - e2 * sinLat2)
+         rho = aF0 * (1 - e2) * (1 - e2 * sinLat2) ** (-1.5)
+         eta2 = v / rho - 1
          off = GridOffset
                   (dLong * term_IV
-                   + dLong ^ pos3 * term_V
-                   + dLong ^ pos5 * term_VI)
-                  (m grid lat + dLong ^ pos2 * term_II
-                     + dLong ^ pos4 * term_III
-                     + dLong * dLong ^ pos5 * term_IIIa)
-                  (0 *~ meter)
+                   + dLong ** 3 * term_V
+                   + dLong ** 5 * term_VI)
+                  (m grid lat + dLong ** 2 * term_II
+                     + dLong ** 4 * term_III
+                     + dLong ** 6 * term_IIIa)
+                  0
          -- Terms defined in [1].
-         term_II   = (v/_2) * sinLat * cosLat
-         term_III  = (v/(24*~one)) * sinLat * cosLat ^ pos3
-                     * (_5 - tanLat ^ pos2 + _9 * eta2)
-         term_IIIa = (v/(720*~one)) * sinLat * cosLat ^ pos5
-                     * ((61 *~ one) - (58 *~ one) * tanLat ^ pos2 + tanLat ^ pos4)
+         term_II   = (v/2) * sinLat * cosLat
+         term_III  = (v/24) * sinLat * cosLat ** 3
+                     * (5 - tanLat ** 2 + 9 * eta2)
+         term_IIIa = (v/720) * sinLat * cosLat ** 5
+                     * (61 - 58 * tanLat ** 2 + tanLat ** 4)
          term_IV   = v * cosLat
-         term_V    = (v/_6) * cosLat ^ pos3 * (v/rho - tanLat ^ pos2)
-         term_VI   = (v/(120*~one)) * cosLat ^ pos5
-                     * (_5 - (18*~one) * tanLat ^ pos2
-                              + tanLat ^ pos4 + (14*~one) * eta2
-                              - (58*~one) * tanLat ^ pos2 * eta2)
+         term_V    = (v/6) * cosLat ** 3 * (v/rho - tanLat ** 2)
+         term_VI   = (v/120) * cosLat ** 5
+                     * (5 - 18 * tanLat ** 2
+                              + tanLat ** 4 + 14 * eta2
+                              - 58 * tanLat ** 2 * eta2)
          {-
          -- Trace message for debugging. Uncomment this code for easy access to intermediate values.
          traceMsg = concat [
@@ -155,7 +149,7 @@ instance (Ellipsoid e) => GridClass (GridTM e) e where
          sinLat = sin lat
          cosLat = cos lat
          tanLat = tan lat
-         sinLat2 = sinLat ^ pos2
+         sinLat2 = sinLat * sinLat
          aF0 = majorRadius (gridEllipsoid grid) * gridScale grid
          e2 = eccentricity2 $ gridEllipsoid grid
 

@@ -6,12 +6,10 @@ module Geodetics.Path where
 import Control.Monad
 import Geodetics.Ellipsoids
 import Geodetics.Geodetic
-import Numeric.Units.Dimensional.Prelude
-import Prelude ()
 
 
--- | Lower and upper exclusive bounds within which a path is valid. 
-type PathValidity = (Length Double, Length Double)
+-- | Lower and upper exclusive distance bounds within which a path is valid. 
+type PathValidity = (Double, Double)
 
 -- | A path is a parametric function of distance along the path. The result is the
 -- position, and the direction of the path at that point as heading and elevation angles.
@@ -24,18 +22,19 @@ type PathValidity = (Length Double, Length Double)
 -- Outside its validity the path function may
 -- return anything or bottom.
 data Path e = Path {
-      pathFunc :: Length Double -> (Geodetic e, Angle Double, Angle Double),
+      pathFunc :: Double -> (Geodetic e, Double, Double),
+         -- ^ Takes a length and returns a position, and direction as heading and elevation angles.
       pathValidity :: PathValidity
    }
    
 -- | Convenience value for paths that are valid for all distances.
 alwaysValid :: PathValidity
 alwaysValid = (negate inf, inf) where
-   inf = (1.0 *~ meter) / (0 *~ one)  -- Assumes IEE arithmetic.
+   inf = 1.0 / 0  -- Assumes IEE arithmetic.
 
 
 -- | True if the path is valid at that distance.
-pathValidAt :: Path e -> Length Double -> Bool
+pathValidAt :: Path e -> Double -> Bool
 pathValidAt path d = d > x1 && d < x2
    where (x1,x2) = pathValidity path
 
@@ -50,9 +49,9 @@ pathValidAt path d = d > x1 && d < x2
 bisect :: 
    Path e 
    -> (Geodetic e -> Ordering)        -- ^ Evaluation function.
-   -> Length Double                   -- ^ Required accuracy in terms of distance along the path.
-   -> Length Double -> Length Double  -- ^ Initial bounds.
-   -> Maybe (Length Double)
+   -> Double                          -- ^ Required accuracy in terms of distance along the path.
+   -> Double -> Double                -- ^ Initial bounds.
+   -> Maybe Double
 bisect path f t b1 b2 = do
       guard $ pathValidAt path b1
       guard $ pathValidAt path b2
@@ -65,7 +64,7 @@ bisect path f t b1 b2 = do
       hasRoot (v1, v2) = snd v1 <= EQ && EQ <= snd v2
       sortPair (v1, v2) = if snd v1 <= snd v2 then (v1, v2) else (v2, v1)
       bisect1 ((d1, r1), (d2, r2)) =
-         let d3 = (d1 + d2) / _2
+         let d3 = (d1 + d2) / 2
              r3 = f' d3
              c1 = ((d1, r1), (d3, r3))
              c2 = ((d3, r3), (d2, r2))
@@ -85,16 +84,16 @@ bisect path f t b1 b2 = do
 --
 -- If either estimate departs from its path validity then @Nothing@ is returned.
 intersect :: (Ellipsoid e) =>
-   Length Double -> Length Double     -- ^ Starting estimates.
-   -> Length Double                   -- ^ Required accuracy.
+   Double -> Double                   -- ^ Starting estimates.
+   -> Double                          -- ^ Required accuracy.
    -> Int                             -- ^ Iteration limit. Returns @Nothing@ if this is reached.  
    -> Path e -> Path e                -- ^ Paths to intersect.
-   -> Maybe (Length Double, Length Double)
+   -> Maybe (Double, Double)
 intersect d1 d2 accuracy n path1 path2
    | not $ pathValidAt path1 d1     = Nothing
    | not $ pathValidAt path2 d2     = Nothing
    | n <= 0                         = Nothing
-   | mag < (1e-15 *~ one)           = Nothing
+   | mag < 1e-15                    = Nothing
    | mag3 (nv1 `cross3` nv2) * r <= accuracy = Just (d1, d2)
        -- Assumes that sin (accuracy/r) == accuracy/r
    | otherwise = 
@@ -104,8 +103,8 @@ intersect d1 d2 accuracy n path1 path2
    where
       (pt1, h1, _) = pathFunc path1 d1
       (pt2, h2, _) = pathFunc path2 d2
-      vectors :: Angle Double -> Angle Double -> Angle Double 
-                 -> (Vec3 (Dimensionless Double), Vec3 (Dimensionless Double))
+      vectors :: Double -> Double -> Double 
+                 -> (Vec3 Double, Vec3 Double)
       vectors lat lon b = (
           -- Unit vector of normal to surface at (lat,lon)
          (cosLat*cosLon, cosLat*sinLon, sinLat),
@@ -125,7 +124,7 @@ intersect d1 d2 accuracy n path1 path2
       (nv2, gc2) = vectors (latitude pt2) (longitude pt2) h2
       nv3 = gc1 `cross3` gc2         -- Intersection of the great circles
       mag = mag3 nv3
-      nv3a = scale3 nv3 (_1 / mag)   -- Scale to unit. See outer function for case when mag3 == 0
+      nv3a = scale3 nv3 (1 / mag)   -- Scale to unit. See outer function for case when mag3 == 0
       nv3b = negate3 nv3a            -- Antipodal result. Take the closest.
       -- Find "nearest" intersection, defined as smaller of sum of distances to current points.
       d1a = gcDist gc1 nv1 nv3a * r
@@ -135,7 +134,7 @@ intersect d1 d2 accuracy n path1 path2
       -- Signed angle between v1 and v2, 
       gcDist norm v1 v2 = 
          let c = v1 `cross3` v2 
-         in (if c `dot3` norm < _0 then negate else id) $ atan2 (mag3 c) (v1 `dot3` v2) 
+         in (if c `dot3` norm < 0 then negate else id) $ atan2 (mag3 c) (v1 `dot3` v2) 
       r = majorRadius $ ellipsoid pt1
           
 {- Note on derivation of "intersect"
@@ -170,8 +169,8 @@ is taken as the basis for the next approximation.
 -- | A ray from a point heading in a straight line in 3 dimensions. 
 rayPath :: (Ellipsoid e) => 
    Geodetic e          -- ^ Start point.
-   -> Angle Double     -- ^ Bearing.
-   -> Angle Double     -- ^ Elevation.
+   -> Double           -- ^ Bearing.
+   -> Double           -- ^ Elevation.
    -> Path e
 rayPath pt1 bearing elevation = Path ray alwaysValid
    where
@@ -181,14 +180,14 @@ rayPath pt1 bearing elevation = Path ray alwaysValid
             (lat,long,alt) = earthToGeo (ellipsoid pt1) pt2'  -- Geodetic of result point.
             (dE,dN,dU) = transform3 (trans3 $ ecefMatrix lat long) delta  -- Direction of ray at result point.
             elevation2 = asin dU
-            bearing2 = if dE == _0 && dN == _0 then bearing else atan2 dE dN  -- Allow for vertical elevation.
+            bearing2 = if dE == 0 && dN == 0 then bearing else atan2 dE dN  -- Allow for vertical elevation.
             
       ecefMatrix lat long =   -- Transform matrix for vectors from (East, North, Up) to (X,Y,Z).
          ((negate sinLong, negate cosLong*sinLat, cosLong*cosLat),
               --    East X      North X               Up X
           (       cosLong, negate sinLong*sinLat, sinLong*cosLat),
               --    East Y      North Y               Up Y
-          (  _0           ,      cosLat         , sinLat))
+          (             0,      cosLat         , sinLat))
               --    East Z      North Z               Up Z
          where
             sinLong = sin long
@@ -215,24 +214,24 @@ rayPath pt1 bearing elevation = Path ray alwaysValid
 -- the approximation is accurate to within a few meters over 1000km.
 rhumbPath :: (Ellipsoid e) =>
    Geodetic e            -- ^ Start point.
-   -> Angle Double       -- ^ Course.
+   -> Double             -- ^ Course.
    -> Path e
 rhumbPath pt course = Path rhumb validity
    where
-      rhumb distance = (Geodetic lat (properAngle lon) _0 (ellipsoid pt), course, _0)
+      rhumb distance = (Geodetic lat (properAngle lon) 0 (ellipsoid pt), course, 0)
          where
             lat' = lat0 + distance * cosC / m0   -- Kaplan Eq 13.
-            lat = lat0 + (m0 / (a*(_1-e2))) * ((_1-_3*e2/_4)*(lat'-lat0)
-                                              + (_3*e2/_8)*(sin (_2*lat') - sin (_2*lat0)))
-            lon | abs cosC > 1e-7 *~ one 
+            lat = lat0 + (m0 / (a*(1-e2))) * ((1-3*e2/4)*(lat'-lat0)
+                                            + (3*e2/8)*(sin (2*lat') - sin (2*lat0)))
+            lon | abs cosC > 1e-7
                      = lon0 + tanC * (q lat - q0)     -- Kaplan Eq 16.
                 | otherwise
-                     = lon0 + distance * sinC / latitudeRadius (ellipsoid pt) ((lat0 + lat')/_2)
+                     = lon0 + distance * sinC / latitudeRadius (ellipsoid pt) ((lat0 + lat')/2)
       validity
-         | cosC > _0  = ((negate pi/_2 - latitude pt) * b / cosC, (pi/_2 - latitude pt) * b / cosC)
-         | otherwise  = ((pi/_2 - latitude pt) * b / cosC, (negate pi/_2 - latitude pt) * b / cosC)
+         | cosC > 0  = ((negate pi/2 - latitude pt) * b / cosC, (pi/2 - latitude pt) * b / cosC)
+         | otherwise  = ((pi/2 - latitude pt) * b / cosC, (negate pi/2 - latitude pt) * b / cosC)
       q0 = q lat0
-      q phi = log (tan (pi/_4+phi/_2)) + e * log ((_1-eSinPhi)/(_1+eSinPhi)) / _2
+      q phi = log (tan (pi/4+phi/2)) + e * log ((1-eSinPhi)/(1+eSinPhi)) / 2
          where                                -- Factor out expression from Eq 16 of Kaplan
             eSinPhi = e * sin phi
       sinC = sin course
@@ -255,11 +254,11 @@ latitudePath :: (Ellipsoid e) =>
    -> Path e
 latitudePath pt = Path line alwaysValid
    where
-      line distance = (pt2, pi/_2, _0) 
+      line distance = (pt2, pi/2, 0)
          where
             pt2 = Geodetic 
                (latitude pt) (longitude pt + distance / r)
-               _0 (ellipsoid pt)
+               0 (ellipsoid pt)
       r = latitudeRadius (ellipsoid pt) (latitude pt)
 
 
@@ -270,4 +269,4 @@ latitudePath pt = Path line alwaysValid
 longitudePath :: (Ellipsoid e) =>
    Geodetic e    -- ^ Start point.
    -> Path e
-longitudePath pt = rhumbPath pt _0
+longitudePath pt = rhumbPath pt 0

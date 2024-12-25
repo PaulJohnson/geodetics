@@ -22,11 +22,8 @@ module Geodetics.Grid (
 ) where
 
 import Data.Char
-import Data.Function
 import Geodetics.Altitude
 import Geodetics.Geodetic
-import Numeric.Units.Dimensional.Prelude hiding ((.))
-import qualified Prelude as P
 
 -- | A Grid is a two-dimensional projection of the ellipsoid onto a plane. Any given type of grid can
 -- usually be instantiated with parameters such as a tangential point or line, and these parameters
@@ -42,7 +39,7 @@ class GridClass r e | r->e where
 
 -- | A point on the specified grid.
 data GridPoint r = GridPoint {
-   eastings, northings, altGP :: Length Double,
+   eastings, northings, altGP :: Double,
    gridBasis :: r
 } deriving (Show)
 
@@ -58,14 +55,13 @@ instance HasAltitude (GridPoint g) where
    setAltitude h gp = gp{altGP = h}
 
 
-
--- | A vector relative to a point on a grid.
+-- | A vector relative to a point on a grid. All distances are in meters.
 -- Operations that use offsets will only give
 -- meaningful results if all the points come from the same grid.
 --
 -- The monoid instance is the sum of offsets.
 data GridOffset = GridOffset {
-   deltaEast, deltaNorth, deltaAltitude :: Length Double
+   deltaEast, deltaNorth, deltaAltitude :: Double
 } deriving (Eq, Show)
 
 instance Semigroup GridOffset where
@@ -74,20 +70,20 @@ instance Semigroup GridOffset where
                         (deltaAltitude g1 + deltaAltitude g2)
 
 instance Monoid GridOffset where
-   mempty = GridOffset _0 _0 _0
+   mempty = GridOffset 0 0 0
    mappend = (<>)
 
--- | An offset defined by a distance and a bearing to the right of North.
+-- | An offset defined by a distance (m) and a bearing (radians) to the right of North.
 --
 -- There is no elevation parameter because we are using a plane to approximate an ellipsoid,
 -- so elevation would not provide a useful result.  If you want to work with elevations
 -- then "rayPath" will give meaningful results.
-polarOffset :: Length Double -> Angle Double -> GridOffset
-polarOffset r d = GridOffset (r * sin d) (r * cos d) _0
+polarOffset :: Double -> Double -> GridOffset
+polarOffset r d = GridOffset (r * sin d) (r * cos d) 0
 
 
 -- | Scale an offset by a scalar.
-offsetScale :: Dimensionless Double -> GridOffset -> GridOffset
+offsetScale :: Double -> GridOffset -> GridOffset
 offsetScale s off = GridOffset (deltaEast off * s)
                                (deltaNorth off * s)
                                (deltaAltitude off * s)
@@ -108,18 +104,18 @@ applyOffset off p = GridPoint (eastings p + deltaEast off)
 
 
 -- | The distance represented by an offset.
-offsetDistance :: GridOffset -> Length Double
+offsetDistance :: GridOffset -> Double
 offsetDistance = sqrt . offsetDistanceSq
 
 
 -- | The square of the distance represented by an offset.
-offsetDistanceSq :: GridOffset -> Area Double
+offsetDistanceSq :: GridOffset -> Double
 offsetDistanceSq off =
-   deltaEast off ^ pos2 + deltaNorth off ^ pos2 + deltaAltitude off ^ pos2
+   deltaEast off ** 2 + deltaNorth off ** 2 + deltaAltitude off ** 2
 
 
 -- | The direction represented by an offset, as bearing to the right of North.
-offsetBearing :: GridOffset -> Angle Double
+offsetBearing :: GridOffset -> Double
 offsetBearing off = atan2 (deltaEast off) (deltaNorth off)
 
 
@@ -151,35 +147,35 @@ unsafeGridCoerce base p = GridPoint (eastings p) (northings p) (altitude p) base
 -- > Just (23700 meters, 100 meters)
 --
 -- If there are any non-digits in the string then the function returns @Nothing@.
-fromGridDigits :: Length Double -> String -> Maybe (Length Double, Length Double)
+fromGridDigits :: Double -> String -> Maybe (Double, Double)
 fromGridDigits sq ds = if all isDigit ds then Just (d, p) else Nothing
    where
       n = length ds
       d = sum $ zipWith (*)
-         (map ((*~ one) . fromIntegral . digitToInt) ds)
-         (tail $ iterate (/ (10 *~ one)) sq)
-      p = sq / ((10 *~ one) ** (fromIntegral n *~ one))
+         (map (fromIntegral . digitToInt) ds)
+         (drop 1 $ iterate (/ 10) sq)
+      p = sq / (10 ** (fromIntegral n))
 
 -- | Convert a distance into a digit string suitable for printing as part
 -- of a grid reference. The result is the nearest position to the specified
 -- number of digits, expressed as an integer count of squares and a string of digits.
 -- If any arguments are invalid then @Nothing@ is returned.
 toGridDigits ::
-   Length Double    -- ^ Size of enclosing grid square. Must be at least 1 km.
+   Double           -- ^ Size of enclosing grid square. Must be at least 1000m.
    -> Int           -- ^ Number of digits to return. Must be positive.
-   -> Length Double -- ^ Offset to convert into grid.
+   -> Double        -- ^ Offset to convert into grid (m).
    -> Maybe (Integer, String)
 toGridDigits sq n d =
-   if sq < (1 *~ kilo meter) || n < 0 || d < _0
+   if sq < 1000 || n < 0 || d < 0
    then Nothing
    else
       Just (sqs, pad)
    where
       p :: Integer
-      p = 10 P.^ n
-      unit :: Length Double
-      unit = sq / (fromIntegral p *~ one)
-      u = round ((d / unit) /~ one)
+      p = 10 ^ n
+      unit :: Double
+      unit = sq / fromIntegral p
+      u = round (d / unit)
       (sqs, d1) = u `divMod` p
       s = show d1
-      pad = if n == 0 then "" else replicate (n P.- length s) '0' ++ s
+      pad = if n == 0 then "" else replicate (n - length s) '0' ++ s

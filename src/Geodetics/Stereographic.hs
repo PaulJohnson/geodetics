@@ -10,30 +10,28 @@ module Geodetics.Stereographic (
    mkGridStereo
 ) where
 
-
 import Geodetics.Ellipsoids
 import Geodetics.Geodetic
 import Geodetics.Grid
-import Numeric.Units.Dimensional.Prelude
-import Prelude ()
 
+import qualified Data.Stream as Stream
 
 -- | A stereographic projection with its origin at an arbitrary point on Earth, other than the poles.
 data GridStereo e = GridStereo {
       gridTangent :: Geodetic e, -- ^ Point where the plane of projection touches the ellipsoid. Often known as the Natural Origin.
       gridOrigin :: GridOffset,  -- ^ Grid position of the tangent point. Often known as the False Origin.
-      gridScale :: Dimensionless Double, -- ^ Scaling factor that balances the distortion between the center and the edges. 
+      gridScale :: Double, -- ^ Scaling factor that balances the distortion between the center and the edges.
                                          -- Should be slightly less than unity.
       
       -- Memoised parameters derived from the tangent point.
-      gridR :: Length Double,
-      gridN, gridC, gridSin, gridCos :: Dimensionless Double,
-      gridLatC :: Angle Double,
-      gridG, gridH :: Length Double
+      gridR :: Double,
+      gridN, gridC, gridSin, gridCos :: Double,
+      gridLatC :: Double,
+      gridG, gridH :: Double
    } deriving (Show)
    
 -- | Create a stereographic projection. The tangency point must not be one of the poles.  
-mkGridStereo :: (Ellipsoid e) => Geodetic e -> GridOffset -> Dimensionless Double -> GridStereo e
+mkGridStereo :: (Ellipsoid e) => Geodetic e -> GridOffset -> Double -> GridStereo e
 mkGridStereo tangent origin scale = GridStereo {
       gridTangent = tangent,
       gridOrigin = origin,
@@ -42,7 +40,7 @@ mkGridStereo tangent origin scale = GridStereo {
       gridN = n,
       gridC = c,
       gridSin = sinLatC1,
-      gridCos = sqrt $ _1 - sinLatC1 * sinLatC1,
+      gridCos = sqrt $ 1 - sinLatC1 * sinLatC1,
       gridLatC = asin sinLatC1,
       gridG = g,
       gridH = h
@@ -51,43 +49,43 @@ mkGridStereo tangent origin scale = GridStereo {
       -- The reference seems to use χO to refer to two slightly different values. 
       -- Here these will be called LatC0 and LatC1.
       ellipse = ellipsoid tangent
-      op :: Num a => Quantity d a -> Quantity d a    -- Values of longitude, tangent longitude, E and N
-      op = if latitude tangent < _0 then negate else id  -- must be negated in the southern hemisphere.
+      op :: Num a => a -> a    -- Values of longitude, tangent longitude, E and N
+      op = if latitude tangent < 0 then negate else id  -- must be negated in the southern hemisphere.
       lat0 = op $ latitude tangent
       sinLat0 = sin lat0
       e2 = eccentricity2 ellipse
       e = sqrt e2
       r = sqrt $ meridianRadius ellipse lat0 * primeVerticalRadius ellipse lat0
-      n = sqrt $ _1 + ((e2 * cos lat0 ^ pos4)/(_1 - e2))
-      s1 = (_1 + sinLat0) / (_1 - sinLat0)
-      s2 = (_1 - e * sinLat0) / (_1 + e * sinLat0)
+      n = sqrt $ 1 + ((e2 * cos lat0 ** 4)/(1 - e2))
+      s1 = (1 + sinLat0) / (1 - sinLat0)
+      s2 = (1 - e * sinLat0) / (1 + e * sinLat0)
       w1 = (s1 * s2 ** e) ** n
-      sinLatC0 = (w1 - _1)/(w1 + _1)
-      c = ((n + sin lat0) * (_1 - sinLatC0)) / ((n - sin lat0) * (_1 + sinLatC0))
+      sinLatC0 = (w1 - 1)/(w1 + 1)
+      c = ((n + sin lat0) * (1 - sinLatC0)) / ((n - sin lat0) * (1 + sinLatC0))
       w2 = c * w1
-      sinLatC1 = (w2 - _1)/(w2 + _1)
-      g = _2 * r * scale * tan (pi/_4 - latC1/_2)
-      h = _4 * r * scale * tan latC1 + g
+      sinLatC1 = (w2 - 1)/(w2 + 1)
+      g = 2 * r * scale * tan (pi/4 - latC1/2)
+      h = 4 * r * scale * tan latC1 + g
       latC1 = asin sinLatC1
       
 
 instance (Ellipsoid e) => GridClass (GridStereo e) e where
    toGrid grid geo = applyOffset (gridOrigin grid) $ GridPoint east north (geoAlt geo) grid
       where
-         op :: Num a => Quantity d a -> Quantity d a    -- Values of longitude, tangent longitude, E and N
-         op = if latitude (gridTangent grid) < _0 then negate else id  -- must be negated in the southern hemisphere.
-         sinLatC = (w - _1)/(w + _1)
-         cosLatC = sqrt $ _1 - sinLatC * sinLatC
+         op :: Num a => a -> a    -- Values of longitude, tangent longitude, E and N
+         op = if latitude (gridTangent grid) < 0 then negate else id  -- must be negated in the southern hemisphere.
+         sinLatC = (w - 1)/(w + 1)
+         cosLatC = sqrt $ 1 - sinLatC * sinLatC
          longC = gridN grid * (op (longitude geo) - long0) + long0
          w = gridC grid * (sA * sB ** e) ** gridN grid
-         sA = (_1+sinLat) / (_1 - sinLat)
-         sB = (_1 - e*sinLat) / (_1 + e*sinLat)
+         sA = (1+sinLat) / (1 - sinLat)
+         sB = (1 - e*sinLat) / (1 + e*sinLat)
          sinLat = sin $ op $ latitude geo
          e = sqrt $ eccentricity2 $ ellipsoid geo
          long0 = op $ longitude $ gridTangent grid
-         b = _1 + sinLatC * gridSin grid + cosLatC * gridCos grid * cos (longC - long0)
-         east = _2 * gridR grid * gridScale grid * cosLatC * sin (longC - long0) / b
-         north = _2 * gridR grid * gridScale grid * (sinLatC * gridCos grid - cosLatC * gridSin grid * cos (longC - long0)) / b
+         b = 1 + sinLatC * gridSin grid + cosLatC * gridCos grid * cos (longC - long0)
+         east = 2 * gridR grid * gridScale grid * cosLatC * sin (longC - long0) / b
+         north = 2 * gridR grid * gridScale grid * (sinLatC * gridCos grid - cosLatC * gridSin grid * cos (longC - long0)) / b
    
    fromGrid gp = 
       {- trace (    -- Remove comment brackets for debugging.
@@ -97,8 +95,8 @@ instance (Ellipsoid e) => GridClass (GridStereo e) e where
          "\n   lat1 = " ++ show lat1 ++ "\n   latN = " ++ show latN ) $ -}
          Geodetic (op latN) (op long) height $ gridEllipsoid grid
       where
-         op :: Num a => Quantity d a -> Quantity d a                   -- Values of longitude, tangent longitude, E and N
-         op = if latitude (gridTangent grid) < _0 then negate else id  -- must be negated in the southern hemisphere.
+         op :: Num a => a -> a                   -- Values of longitude, tangent longitude, E and N
+         op = if latitude (gridTangent grid) < 0 then negate else id  -- must be negated in the southern hemisphere.
          GridPoint east north height _ = applyOffset (offsetNegate $ gridOrigin grid) gp
          east' = east
          north' = north
@@ -106,16 +104,16 @@ instance (Ellipsoid e) => GridClass (GridStereo e) e where
          long0 = op $ longitude $ gridTangent grid
          i = atan2 east' (gridH grid + north')
          j = atan2 east' (gridG grid - north') - i
-         latC = gridLatC grid + _2 * atan2 (north' - east' * tan (j/_2)) (_2 * gridR grid * gridScale grid)
-         longC = j + _2 * i + long0
+         latC = gridLatC grid + 2 * atan2 (north' - east' * tan (j/2)) (2 * gridR grid * gridScale grid)
+         longC = j + 2 * i + long0
          sinLatC = sin latC
          long = (longC - long0) / gridN grid + long0
-         isoLat = log ((_1 + sinLatC) / (gridC grid * (_1 - sinLatC))) / (_2 * gridN grid)
-         lat1 = _2 * atan (exp isoLat) - pi/_2
-         next lat = lat - (isoN - isoLat) * cos lat * (_1 - e2 * sin lat ^ pos2) / (_1 - e2)
+         isoLat = log ((1 + sinLatC) / (gridC grid * (1 - sinLatC))) / (2 * gridN grid)
+         lat1 = 2 * atan (exp isoLat) - pi/2
+         next lat = lat - (isoN - isoLat) * cos lat * (1 - e2 * sin lat ** 2) / (1 - e2)
             where isoN = isometricLatitude (gridEllipsoid grid) lat
                   e2 = eccentricity2 $ gridEllipsoid grid
-         lats = iterate next lat1
-         latN = snd $ head $ dropWhile (\(v1, v2) -> abs (v1-v2) > 0.01 *~ arcsecond) $ zip lats $ tail lats 
-            
+         lats = Stream.iterate next lat1
+         latN = snd $ Stream.head $ Stream.dropWhile (\(v1, v2) -> abs (v1-v2) > 0.01 * arcsecond) $ Stream.zip lats $ Stream.drop 1 lats
+         arcsecond = degreesToRadians $ 1/3600
    gridEllipsoid = ellipsoid . gridTangent

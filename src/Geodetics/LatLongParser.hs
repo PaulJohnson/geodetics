@@ -1,6 +1,8 @@
 -- | The default reader for Geodetic ground positions is flexible but slow. If you are
 -- going to read positions in a known format and performance matters then use one of
 -- the more specialised parsers here.
+--
+-- All angles are returned in degrees.
 
 module Geodetics.LatLongParser (
 
@@ -78,7 +80,8 @@ degreesMinutesSeconds = do
    return $ d + ms
 
 
--- | Parse an unsigned angle written using degrees, minutes and seconds with units (° ' \"). At least one component must be specified.
+-- | Parse an unsigned angle written using degrees, minutes and seconds with units (° ' \").
+-- At least one component must be specified.
 degreesMinutesSecondsUnits :: ReadP Double
 degreesMinutesSecondsUnits = do
    (s, a) <- gather $ do

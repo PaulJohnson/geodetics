@@ -20,15 +20,11 @@ module Geodetics.Geodetic (
 
 
 import Data.Char (chr)
-import Data.Function
 import Data.Maybe
-import Data.Monoid
 import Geodetics.Altitude
 import Geodetics.Ellipsoids
 import Geodetics.LatLongParser
-import Numeric.Units.Dimensional.Prelude hiding ((.))
 import Text.ParserCombinators.ReadP
-import qualified Prelude as P
 
 -- | Defines a three-D position on or around the Earth using latitude,
 -- longitude and altitude with respect to a specified ellipsoid, with
@@ -60,8 +56,8 @@ import qualified Prelude as P
 -- the same to within a given tolerance then use "geometricDistance"
 -- (or its squared variant to avoid an extra @sqrt@ operation).
 data Geodetic e = Geodetic {
-   latitude, longitude :: Angle Double,
-   geoAlt :: Length Double,
+   latitude, longitude :: Double,  -- ^ In radians.
+   geoAlt :: Double,  -- ^ In meters.
    ellipsoid :: e
 }
 
@@ -70,8 +66,7 @@ instance (Ellipsoid e) => Show (Geodetic e) where
       showAngle (abs $ latitude g),  " ", letter "SN" (latitude g),  ", ",
       showAngle (abs $ longitude g), " ", letter "WE" (longitude g), ", ",
       show (altitude g), " ", show (ellipsoid g)]
-      where letter s n = [s !! (if n < _0 then 0 else 1)]
-
+      where letter s n = [s !! (if n < 0 then 0 else 1)]
 
 
 -- | Read the latitude and longitude of a ground position and
@@ -94,25 +89,24 @@ readGroundPosition :: (Ellipsoid e) => e -> String -> Maybe (Geodetic e)
 readGroundPosition e str =
    case map fst $ filter (null . snd) $ readP_to_S latLong str of
       [] -> Nothing
-      (lat,long) : _ -> Just $ groundPosition $ Geodetic (lat *~ degree) (long *~ degree) undefined e
+      (lat,long) : _ -> Just $ groundPosition $ Geodetic (degreesToRadians lat) (degreesToRadians long) undefined e
 
 
 -- | Show an angle as degrees, minutes and seconds to two decimal places.
-showAngle :: Angle Double -> String
+showAngle :: Double -> String
 showAngle a
-   | isNaN a1       = "NaN"  -- Not a Nangle
-   | isInfinite a1  = sgn ++ "Infinity"
+   | isNaN a        = "NaN"  -- Not a Nangle
+   | isInfinite a   = sgn ++ "Infinity"
    | otherwise      = concat [sgn, show d, [chr 0xB0, ' '],
                               show m, "\8242 ",
                               show s, ".", dstr, "\8243" ]
    where
-      a1 = a /~ one
-      sgn = if a < _0 then "-" else ""
+      sgn = if a < 0 then "-" else ""
       centisecs :: Integer
-      centisecs = P.abs $ P.round $ (a /~ degree) P.* 360000  -- hundredths of arcsec per degree.
-      (d, m1) = centisecs `P.divMod` 360000
-      (m, s1) = m1 `P.divMod` 6000   -- hundredths of arcsec per arcmin
-      (s, ds) = s1 `P.divMod` 100
+      centisecs = abs $ round $ (radiansToDegrees a) * 360000  -- hundredths of arcsec per degree.
+      (d, m1) = centisecs `divMod` 360000
+      (m, s1) = m1 `divMod` 6000   -- hundredths of arcsec per arcmin
+      (s, ds) = s1 `divMod` 100
       dstr = reverse $ take 2 $ reverse (show ds) ++ "00" -- Decimal fraction with zero padding.
 
 
@@ -128,8 +122,8 @@ antipode :: (Ellipsoid e) => Geodetic e -> Geodetic e
 antipode g = Geodetic lat long (geoAlt g) (ellipsoid g)
    where
       lat = negate $ latitude g
-      long' = longitude g - 180 *~ degree
-      long | long' < _0  = long' + 360 *~ degree
+      long' = longitude g - degreesToRadians 180
+      long | long' < 0  = long' + degreesToRadians 360
            | otherwise  = long'
 
 
@@ -140,7 +134,7 @@ geoToEarth :: (Ellipsoid e) => Geodetic e -> ECEF
 geoToEarth geo = (
       (n + h) * coslat * coslong,
       (n + h) * coslat * sinlong,
-      (n * (_1 - eccentricity2 e) + h) * sinlat)
+      (n * (1 - eccentricity2 e) + h) * sinlat)
    where
       n = normal e $ latitude geo
       e = ellipsoid geo
@@ -156,26 +150,27 @@ geoToEarth geo = (
 --
 -- Uses the closed form solution of H. Vermeille: Direct
 -- transformation from geocentric coordinates to geodetic coordinates.
--- Journal of Geodesy Volume 76, Number 8 (2002), 451-454
-earthToGeo :: (Ellipsoid e) => e -> ECEF -> (Angle Double, Angle Double, Length Double)
-earthToGeo e (x,y,z) = (phi, atan2 y x, sqrt (l ^ pos2 + p2) - norm)
+-- Journal of Geodesy Volume 76, Number 8 (2002), 451-454. Result is in the form
+-- @(latitude, longitude, altitude)@.
+earthToGeo :: (Ellipsoid e) => e -> ECEF -> (Double, Double, Double)
+earthToGeo e (x,y,z) = (phi, atan2 y x, sqrt (l ** 2 + p2) - norm)
    where
       -- Naming: numeric suffix inicates power. Hence x2 = x * x, x3 = x2 * x, etc.
-      p2 = x ^ pos2 + y ^ pos2
+      p2 = x * x + y * y
       a = majorRadius e
-      a2 = a ^ pos2
+      a2 = a * a
       e2 = eccentricity2 e
-      e4 = e2 ^ pos2
-      zeta = (_1-e2) * (z ^ pos2 / a2)
-      rho = (p2 / a2 + zeta - e4) / _6
-      rho2 = rho ^ pos2
+      e4 = e2 * e2
+      zeta = (1-e2) * (z * z / a2)
+      rho = (p2 / a2 + zeta - e4) / 6
+      rho2 = rho * rho
       rho3 = rho * rho2
-      s = e4 * zeta * p2 / (_4 * a2)
-      t = cbrt (s + rho3 + sqrt (s * (s + _2 * rho3)))
+      s = e4 * zeta * p2 / (4 * a2)
+      t = (s + rho3 + sqrt (s * (s + 2 * rho3))) ** (1/3) -- Cube root
       u = rho + t + rho2 / t
-      v = sqrt (u ^ pos2 + e4 * zeta)
-      w = e2 * (u + v - zeta) / (_2 * v)
-      kappa = _1 + e2 * (sqrt (u + v + w ^ pos2) + w) / (u + v)
+      v = sqrt (u * u + e4 * zeta)
+      w = e2 * (u + v - zeta) / (2 * v)
+      kappa = 1 + e2 * (sqrt (u + v + w * w) + w) / (u + v)
       phi = atan (kappa * z / sqrt p2)
       norm = normal e phi
       l = z + e2 * norm * sin phi
@@ -203,12 +198,12 @@ toWGS84 g = Geodetic lat lon alt WGS84
 -- points. They must be on the same ellipsoid.
 -- Note that this is not the geodetic distance taken by following
 -- the curvature of the earth.
-geometricalDistance :: (Ellipsoid e) => Geodetic e -> Geodetic e -> Length Double
+geometricalDistance :: (Ellipsoid e) => Geodetic e -> Geodetic e -> Double
 geometricalDistance g1 g2 = sqrt $ geometricalDistanceSq g1 g2
 
--- | The square of the absolute distance. Comes out as "Area" type of course.
-geometricalDistanceSq :: (Ellipsoid e) => Geodetic e -> Geodetic e -> Area Double
-geometricalDistanceSq g1 g2 = (x1-x2) ^ pos2 + (y1-y2) ^ pos2 + (z1-z2) ^ pos2
+-- | The square of the absolute distance.
+geometricalDistanceSq :: (Ellipsoid e) => Geodetic e -> Geodetic e -> Double
+geometricalDistanceSq g1 g2 = (x1-x2) ** 2 + (y1-y2) ** 2 + (z1-z2) ** 2
    where
       (x1,y1,z1) = geoToEarth g1
       (x2,y2,z2) = geoToEarth g2
@@ -229,23 +224,19 @@ geometricalDistanceSq g1 g2 = (x1-x2) ^ pos2 + (y1-y2) ^ pos2 + (z1-z2) ^ pos2
 -- equations\". T. Vincenty. Survey Review XXII 176, April
 -- 1975. <http://www.ngs.noaa.gov/PUBS_LIB/inverse.pdf>
 groundDistance :: (Ellipsoid e) => Geodetic e -> Geodetic e ->
-                  Maybe (Length Double, Dimensionless Double, Dimensionless Double)
+                  Maybe (Double, Double, Double)
 groundDistance p1 p2 = do
      (_, (lambda, (cos2Alpha, delta, sinDelta, cosDelta, cos2DeltaM))) <-
-       listToMaybe $ dropWhile converging $ take 100 $ zip lambdas $ tail lambdas
+       listToMaybe $ dropWhile converging $ take 100 $ zip lambdas $ drop 1 lambdas
      let
-       uSq = cos2Alpha * (a^pos2 - b^pos2) / b^pos2
-       bigA = _1 + uSq/(16384*~one) * ((4096*~one) + uSq *
-                                      (((-768)*~one) + uSq * ((320*~one)
-                                                            - (175*~one)*uSq)))
-       bigB = uSq/(1024*~one) * ((256*~one) +
-                                 uSq * (((-128)*~one) +
-                                        uSq * ((74*~one) - (47*~one)*uSq)))
+       uSq = cos2Alpha * (a**2 - b**2) / b**2
+       bigA = 1 + uSq/16384 * 4096 + uSq * (-768) + uSq * ((320 - (175*uSq)))
+       bigB =     uSq/1024  * 256  + uSq * (-128) + uSq * ((74 -  (47* uSq)))
        deltaDelta =
          bigB * sinDelta * (cos2DeltaM +
-                             bigB/_4 * (cosDelta * (_2 * cos2DeltaM^pos2 - _1)
-                                        - bigB/_6 * cos2DeltaM * (_4 * sinDelta^pos2 - _3)
-                                          * (_4 * cos2DeltaM - _3)))
+                             bigB/4 * (cosDelta * (2 * cos2DeltaM**2 - 1)
+                                       - bigB/6 * cos2DeltaM * (4 * sinDelta**2 - 3)
+                                          * (4 * cos2DeltaM - 3)))
        s = b * bigA * (delta - deltaDelta)
        alpha1 = atan2(cosU2 * sin lambda) (cosU1 * sinU2 - sinU1 * cosU2 * cos lambda)
        alpha2 = atan2(cosU1 * sin lambda) (cosU1 * sinU2 * cos lambda - sinU1 * cosU2)
@@ -255,8 +246,8 @@ groundDistance p1 p2 = do
     a = majorRadius $ ellipsoid p1
     b = minorRadius $ ellipsoid p1
     l = abs $ longitude p1 - longitude p2
-    u1 = atan ((_1-f) * tan (latitude p1))
-    u2 = atan ((_1-f) * tan (latitude p2))
+    u1 = atan ((1-f) * tan (latitude p1))
+    u2 = atan ((1-f) * tan (latitude p2))
     sinU1 = sin u1
     cosU1 = cos u1
     sinU2 = sin u2
@@ -266,25 +257,25 @@ groundDistance p1 p2 = do
       where
         sinLambda = sin lambda
         cosLambda = cos lambda
-        sinDelta = sqrt((cosU2 * sinLambda) ^ pos2 +
-                        (cosU1 * sinU2 - sinU1 * cosU2 * cosLambda) ^ pos2)
+        sinDelta = sqrt((cosU2 * sinLambda) ** 2 +
+                        (cosU1 * sinU2 - sinU1 * cosU2 * cosLambda) ** 2)
         cosDelta = sinU1 * sinU2 + cosU1 * cosU2 * cosLambda
         delta = atan2 sinDelta cosDelta
-        sinAlpha = if sinDelta == _0 then _0 else cosU1 * cosU2 * sinLambda / sinDelta
-        cos2Alpha = _1 - sinAlpha ^ pos2
-        cos2DeltaM = if cos2Alpha == _0
-                     then _0
-                     else cosDelta - _2 * sinU1 * sinU2 / cos2Alpha
-        c = f/(16 *~ one) * cos2Alpha * (_4 + f * (_4 - _3 * cos2Alpha))
-        lambda1 = l + (_1-c) * f * sinAlpha
+        sinAlpha = if sinDelta == 0 then 0 else cosU1 * cosU2 * sinLambda / sinDelta
+        cos2Alpha = 1 - sinAlpha ** 2
+        cos2DeltaM = if cos2Alpha == 0
+                     then 0
+                     else cosDelta - 2 * sinU1 * sinU2 / cos2Alpha
+        c = (f/16) * cos2Alpha * (4 + f * (4 - 3 * cos2Alpha))
+        lambda1 = l + (1-c) * f * sinAlpha
                   * (delta + c * sinDelta
-                     * (cos2DeltaM + c * cosDelta *(_2 * cos2DeltaM ^ pos2 - _1)))
+                     * (cos2DeltaM + c * cosDelta *(2 * cos2DeltaM ** 2 - 1)))
     lambdas = iterate (nextLambda . fst) (l, undefined)
-    converging ((l1,_),(l2,_)) = abs (l1 - l2) > (1e-14 *~ one)
+    converging ((l1,_),(l2,_)) = abs (l1 - l2) > 1e-14
 
 
 -- | Add or subtract multiples of 2*pi so that for all @t@, @-pi < properAngle t < pi@.
-properAngle :: Angle Double -> Angle Double
+properAngle :: Double -> Double
 properAngle t
    | r1 <= negate pi    = r1 + pi2
    | r1 > pi            = r1 - pi2
@@ -292,6 +283,6 @@ properAngle t
    where
       pf :: Double -> (Int, Double)
       pf = properFraction  -- Shut up GHC warning about defaulting to Integer.
-      (_,r) = pf (t/pi2 /~ one)
-      r1 = (r *~ one) * pi2
-      pi2 = pi * _2
+      (_,r) = pf (t/pi2)
+      r1 = r * pi2
+      pi2 = pi * 2
