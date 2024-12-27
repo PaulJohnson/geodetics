@@ -115,5 +115,4 @@ instance (Ellipsoid e) => GridClass (GridStereo e) e where
                   e2 = eccentricity2 $ gridEllipsoid grid
          lats = Stream.iterate next lat1
          latN = snd $ Stream.head $ Stream.dropWhile (\(v1, v2) -> abs (v1-v2) > 0.01 * arcsecond) $ Stream.zip lats $ Stream.drop 1 lats
-         arcsecond = degreesToRadians $ 1/3600
    gridEllipsoid = ellipsoid . gridTangent

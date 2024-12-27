@@ -14,14 +14,17 @@ specific area.
 -}
 
 module Geodetics.Ellipsoids (
-   radiansToDegrees,
-   degreesToRadians,
-   -- ** Helmert transform between geodetic reference systems
+   -- * Conversion constants
+   degree,
+   arcminute,
+   arcsecond,
+   kilometer,
+   -- * Helmert transform between geodetic reference systems
    Helmert (..),
    inverseHelmert,
    ECEF,
    applyHelmert,
-   -- ** Ellipsoid models of the Geoid
+   -- * Ellipsoid models of the Geoid
    Ellipsoid (..),
    WGS84 (..),
    LocalEllipsoid (..),
@@ -29,13 +32,13 @@ module Geodetics.Ellipsoids (
    minorRadius,
    eccentricity2,
    eccentricity'2,
-   -- ** Auxiliary latitudes and related Values
+   -- * Auxiliary latitudes and related Values
    normal,
    latitudeRadius,
    meridianRadius,
    primeVerticalRadius,
    isometricLatitude,
-   -- ** Tiny linear algebra library for 3D vectors
+   -- * Tiny linear algebra library for 3D vectors
    Vec3,
    Matrix3,
    add3,
@@ -49,14 +52,28 @@ module Geodetics.Ellipsoids (
 ) where
 
 
--- | All angles in this library are radians.
-radiansToDegrees :: Double -> Double
-radiansToDegrees = (* (180/pi))
+-- | All angles in this library are in radians. This is one degree in radians.
+degree :: Double
+degree = pi/180
+
+-- | One arc-minute in radians.
+arcminute :: Double
+arcminute = degree / 60
+
+-- | One arc-second in radians.
+arcsecond :: Double
+arcsecond = arcminute / 60
 
 
-degreesToRadians :: Double -> Double
-degreesToRadians = (* (pi/180))
+-- | All distances in this library are in meters. This is one kilometer in meters.
+kilometer :: Double
+kilometer = 1000
 
+
+-- | Small integers, specialised to @Int@, used for raising to powers.
+--
+-- If you say @x^2@ then Haskell complains that the @2@ has ambiguous type, so you
+-- need to say @x^(2::Int)@ to disambiguate it. This gets tedious in complex formulae.
 
 -- | 3d vector as @(X,Y,Z)@.
 type Vec3 a = (a,a,a)

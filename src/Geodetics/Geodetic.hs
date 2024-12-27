@@ -1,5 +1,5 @@
 module Geodetics.Geodetic (
-   -- ** Geodetic Coordinates
+   -- * Geodetic Coordinates
    Geodetic (..),
    readGroundPosition,
    toLocal,
@@ -10,11 +10,11 @@ module Geodetics.Geodetic (
    groundDistance,
    properAngle,
    showAngle,
-   -- ** Earth Centred Earth Fixed Coordinates
+   -- * Earth Centred Earth Fixed Coordinates
    ECEF,
    geoToEarth,
    earthToGeo,
-   -- ** Re-exported for convenience
+   -- * Re-exported for convenience
    WGS84 (..)
 ) where
 
@@ -89,7 +89,7 @@ readGroundPosition :: (Ellipsoid e) => e -> String -> Maybe (Geodetic e)
 readGroundPosition e str =
    case map fst $ filter (null . snd) $ readP_to_S latLong str of
       [] -> Nothing
-      (lat,long) : _ -> Just $ groundPosition $ Geodetic (degreesToRadians lat) (degreesToRadians long) undefined e
+      (lat,long) : _ -> Just $ groundPosition $ Geodetic (lat * degree) (long * degree) undefined e
 
 
 -- | Show an angle as degrees, minutes and seconds to two decimal places.
@@ -103,7 +103,7 @@ showAngle a
    where
       sgn = if a < 0 then "-" else ""
       centisecs :: Integer
-      centisecs = abs $ round $ (radiansToDegrees a) * 360000  -- hundredths of arcsec per degree.
+      centisecs = abs $ round $ (a * degree * 360000)  -- hundredths of arcsec per degree.
       (d, m1) = centisecs `divMod` 360000
       (m, s1) = m1 `divMod` 6000   -- hundredths of arcsec per arcmin
       (s, ds) = s1 `divMod` 100
@@ -122,8 +122,8 @@ antipode :: (Ellipsoid e) => Geodetic e -> Geodetic e
 antipode g = Geodetic lat long (geoAlt g) (ellipsoid g)
    where
       lat = negate $ latitude g
-      long' = longitude g - degreesToRadians 180
-      long | long' < 0  = long' + degreesToRadians 360
+      long' = longitude g - 180 * degree
+      long | long' < 0  = long' + 360 * degree
            | otherwise  = long'
 
 
@@ -230,8 +230,8 @@ groundDistance p1 p2 = do
        listToMaybe $ dropWhile converging $ take 100 $ zip lambdas $ drop 1 lambdas
      let
        uSq = cos2Alpha * (a**2 - b**2) / b**2
-       bigA = 1 + uSq/16384 * 4096 + uSq * (-768) + uSq * ((320 - (175*uSq)))
-       bigB =     uSq/1024  * 256  + uSq * (-128) + uSq * ((74 -  (47* uSq)))
+       bigA = 1 + uSq/16384 * (4096 + uSq * ((-768) + uSq * ((320 - 175*uSq))))
+       bigB =     uSq/1024  * (256  + uSq * ((-128) + uSq * ((74 -  47* uSq))))
        deltaDelta =
          bigB * sinDelta * (cos2DeltaM +
                              bigB/4 * (cosDelta * (2 * cos2DeltaM**2 - 1)

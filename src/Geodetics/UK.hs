@@ -36,8 +36,6 @@ instance Ellipsoid OSGB36 where
       cX = 446.448, cY = (-125.157), cZ = 542.06,
       helmertScale = (-20.4894),
       rX = 0.1502 * arcsecond, rY = 0.247 * arcsecond, rZ = 0.8421 * arcsecond }
-      where
-         arcsecond = degreesToRadians $ 1/3600
 
 -- | The UK National Grid is a Transverse Mercator projection with a true origin at
 -- 49 degrees North, 2 degrees West on OSGB36, and a false origin 400km West and 100 km North of
@@ -53,18 +51,14 @@ instance GridClass UkNationalGrid OSGB36 where
 
 ukTrueOrigin :: Geodetic OSGB36
 ukTrueOrigin = Geodetic {
-   latitude = degreesToRadians 49,
-   longitude = degreesToRadians (-2),
+   latitude = 49 * degree,
+   longitude = (-2) * degree,
    geoAlt = 0,
    ellipsoid = OSGB36
 }
 
 ukFalseOrigin :: GridOffset
 ukFalseOrigin = GridOffset ((-400) * kilometer) (100 * kilometer) (0 * kilometer)
-
-
-kilometer :: Double
-kilometer = 1000
 
 
 -- | Numerical definition of the UK national grid.

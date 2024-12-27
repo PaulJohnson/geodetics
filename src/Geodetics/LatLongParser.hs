@@ -5,7 +5,6 @@
 -- All angles are returned in degrees.
 
 module Geodetics.LatLongParser (
-
    degreesMinutesSeconds,
    degreesMinutesSecondsUnits,
    degreesDecimalMinutes,

@@ -1,11 +1,11 @@
 {-# LANGUAGE FunctionalDependencies #-}
 
 module Geodetics.Grid (
-   -- ** Grid types
+   -- * Grid types
    GridClass (..),
    GridPoint (..),
    GridOffset (..),
-   -- ** Grid operations
+   -- * Grid operations
    polarOffset,
    offsetScale,
    offsetNegate,
@@ -14,9 +14,9 @@ module Geodetics.Grid (
    offsetDistanceSq,
    offsetBearing,
    gridOffset,
-   -- ** Unsafe conversion
+   -- * Unsafe conversion
    unsafeGridCoerce,
-   -- ** Utility functions for grid references
+   -- * Utility functions for grid references
    fromGridDigits,
    toGridDigits
 ) where
