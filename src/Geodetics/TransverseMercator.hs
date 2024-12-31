@@ -84,7 +84,7 @@ instance (Ellipsoid e) => GridClass (GridTM e) e where
 
       where
          GridPoint east' north' _ _ = falseOrigin grid `applyOffset` p
-         lat' = fst $ Stream.head $ Stream.dropWhile ((> 1e-5) . snd)
+         lat' = fst $ Stream.head $ Stream.dropWhile ((> 1e-5) . abs . snd)
                $ Stream.tail $ Stream.iterate next (latitude $ trueOrigin grid, 1)
             where
                next (phi, _) = let delta = north' - m grid phi in (phi + delta / aF0, delta)
