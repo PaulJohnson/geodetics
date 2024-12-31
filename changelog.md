@@ -20,3 +20,6 @@ Version 0.1.1: Fixed bug #15: for a point p, groundDistance p p returned NaN
 
 Version 0.1.2: Fixed bugs #16 and #17: Unicode PRIME and DOUBLE PRIME now allowed in
    position strings, and the degree symbol is allowed for decimal degrees.
+
+Version 1.0.0: Removed dependency on Dimensional library. This is a breaking change:
+   hence the major version bump. Also fixed bug #18 (and #19).
