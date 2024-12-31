@@ -50,7 +50,7 @@ instance EqProp Helmert where
                    rX' ≈- rX'', rY' ≈- rY'', rZ' ≈- rZ'']
 
     where x ≈ y = abs (x - y) < 0.00001
-          x ≈- y = abs (x - y) < (1 / (5 * 2) ** 5)
+          x ≈- y = abs (x - y) < (1 / (5 * 2) ^ _5)
 
 tests :: [Test]
 tests = [
@@ -219,8 +219,10 @@ prop_tmGridInverse =
          , ellipsoid = WGS84
          }
        g = mkGridTM origin mempty 1
-       testPoint = origin { latitude = (-0.02) * degree }
-   in fromGrid (toGrid g testPoint) `closeEnough` testPoint
+       testPoint = origin { latitude = (-1) * arcminute }
+       tp1 = toGrid g testPoint
+       tp2 = fromGrid tp1
+   in tp2 `closeEnough` testPoint
    
 -- | Converting a UK grid reference to a GridPoint and back is a null operation.
 prop_ukGrid1 :: GridRef -> Bool
@@ -241,7 +243,10 @@ ukSampleGrid = map convert [
    ("ND3804872787", 338048, 972787, 58.638518, -3.0688688,   "John O Groats"),
    ("SC3915875189", 239158, 475189, 54.147275, -4.4641148,   "Douglas Harbour"),
    ("ST1922474591", 319224, 174591, 51.464505, -3.1641741,   "Torchwood HQ"),
-   ("SK3520736502", 435207, 336502, 52.924784, -1.4777486,   "Derby Cathedral")]
+   ("SK3520736502", 435207, 336502, 52.924784, -1.4777486,   "Derby Cathedral"),
+   ("TG5141013177", 651410, 313177, 52.657979 , 1.7160519,   "Caister Water Tower"),
+   ("TG2623802646", 626238, 302646, 52.574548 , 1.3373749,   "Framingham")]
+   -- Caister and Framingham are taken from Ordnance Survey worked examples.
    where
       convert (grid, x, y, lat, long, desc) =
          (grid, GridPoint (x) (y) (0) UkNationalGrid,
