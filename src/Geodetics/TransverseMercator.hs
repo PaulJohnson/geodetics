@@ -43,10 +43,10 @@ mkGridTM origin offset sf =
    GridTM {trueOrigin = origin,
            falseOrigin = offset,
            gridScale = sf,
-           gridN1 = 1 + n + (5/4) * n**2 + (5/4) * n**3,
-           gridN2 = 3 * n + 3 * n**2 + (21/8) * n**3,
-           gridN3 = (15/8) * (n**2 + n**3),
-           gridN4 = (35/24) * n**3
+           gridN1 = 1 + n + (5/4) * n^ _2 + (5/4) * n^ _3,
+           gridN2 = 3 * n + 3 * n^ _2 + (21/8) * n^ _3,
+           gridN3 = (15/8) * (n^ _2 + n^ _3),
+           gridN4 = (35/24) * n^ _3
         }
     where
        f = flattening $ ellipsoid origin
@@ -66,75 +66,90 @@ m grid lat = bF0 * (gridN1 grid * dLat
 
 
 instance (Ellipsoid e) => GridClass (GridTM e) e where
-   fromGrid p = Geodetic
-      (lat' - east' ** 2 * tanLat / (2 * rho * v)  -- Term VII
-            + east' ** 4 * (tanLat / (24 * rho * v ** 3))
-                           * (5 + 3 * tanLat ** 2 + eta2 - 9 * tanLat ** 2 * eta2)  -- Term VIII
-            - east' ** 6 * (tanLat / (720 * rho * v ** 5))
-                           * (61 + 90 * tanLat ** 2 + 45 * tanLat ** 4)) -- Term IX
-      (longitude (trueOrigin grid)
-            + east' / (cosLat * v)  -- Term X
-            - (east' ** 3 / (6 * cosLat * v ** 3)) * (v / rho + 2 * tanLat ** 2)  -- Term XI
-            + (east' ** 5 / (120 * cosLat * v ** 5))
-                 * (5 + 28 * tanLat ** 2  + 24 * tanLat ** 4)  -- Term XII
-            - (east' ** 5 * east' ** 2 / (5040 * cosLat * v ** 7))
-                 * (61 + 662 * tanLat ** 2 + 1320 * tanLat ** 4 + 720 * tanLat ** 6)) -- Term XIIa
-     0
-     (gridEllipsoid grid)
-
+   fromGrid p = -- trace traceMsg $
+      Geodetic
+         (lat' - east' ^ _2 * term_VII + east' ^ _4 * term_VIII - east' ^ _6 * term_IX)
+         (longitude (trueOrigin grid)
+               + east' * term_X - east' ^ _3 * term_XI + east' ^ _5 * term_XII - east' ^ _7 * term_XIIa)
+         (altGP p)
+         (gridEllipsoid grid)
       where
          GridPoint east' north' _ _ = falseOrigin grid `applyOffset` p
          lat' = fst $ Stream.head $ Stream.dropWhile ((> 1e-5) . abs . snd)
                $ Stream.tail $ Stream.iterate next (latitude $ trueOrigin grid, 1)
             where
                next (phi, _) = let delta = north' - m grid phi in (phi + delta / aF0, delta)
+         -- Terms defined in [1]
+         term_VII  = tanLat / (2 * rho * v)
+         term_VIII = (tanLat / (24 * rho * v ^ _3))  * (5 + 3 * tanLat ^ _2 + eta2 - 9 * tanLat ^ _2 * eta2)
+         term_IX   = (tanLat / (720 * rho * v ^ _5)) * (61 + 90 * tanLat ^ _2 + 45 * tanLat ^ _4)
+         term_X    = 1                                                                 / (cosLat * v)
+         term_XI   = (v / rho + 2 * tanLat ^ _2)                                       / (6 * cosLat * v ^ _3)
+         term_XII  = ( 5 +  28 * tanLat ^ _2 +   24 * tanLat ^ _4)                     / (120 * cosLat * v ^ _5)
+         term_XIIa = (61 + 662 * tanLat ^ _2 + 1320 * tanLat ^ _4 + 720 * tanLat ^ _6) / (5040 * cosLat * v ^ _7)
 
+         -- Trace message for debugging. Uncomment this code to inspect intermediate values.
+         {-
+         traceMsg = concat [
+            "lat' = ", show lat', "\n",
+            "v    = ", show v, "\n",
+            "rho  = ", show rho, "\n",
+            "eta2 = ", show eta2, "\n",
+            "VII  = ", show term_VII, "\n",
+            "VIII = ", show term_VIII, "\n",
+            "IX   = ", show term_IX, "\n",
+            "X    = ", show term_X, "\n",
+            "XI   = ", show term_XI, "\n",
+            "XII  = ", show term_XII, "\n",
+            "XIIa = ", show term_XIIa, "\n"]
+         -}
          sinLat = sin lat'
          cosLat = cos lat'
          tanLat = tan lat'
          sinLat2 = sinLat * sinLat
          v = aF0 / sqrt (1 - e2 * sinLat2)
-         rho = aF0 * (1 - e2) * (1 - e2 * sinLat2) ** (-1.5)
+         rho = v * (1 - e2) / (1 - e2 * sinLat2)
          eta2 = v / rho - 1
 
          aF0 = majorRadius (gridEllipsoid grid) * gridScale grid
          e2 = eccentricity2 $ gridEllipsoid grid
          grid = gridBasis p
 
-   toGrid grid geo = applyOffset (off  `mappend` offsetNegate (falseOrigin grid)) $
-                     GridPoint 0 0 0 grid
+   toGrid grid geo = -- trace traceMsg $ 
+      applyOffset (off  `mappend` offsetNegate (falseOrigin grid)) $ GridPoint 0 0 0 grid
       where
          v = aF0 / sqrt (1 - e2 * sinLat2)
-         rho = aF0 * (1 - e2) * (1 - e2 * sinLat2) ** (-1.5)
+         rho = v * (1 - e2) / (1 - e2 * sinLat2)
          eta2 = v / rho - 1
          off = GridOffset
                   (dLong * term_IV
-                   + dLong ** 3 * term_V
-                   + dLong ** 5 * term_VI)
-                  (m grid lat + dLong ** 2 * term_II
-                     + dLong ** 4 * term_III
-                     + dLong ** 6 * term_IIIa)
+                   + dLong ^ _3 * term_V
+                   + dLong ^ _5 * term_VI)
+                  (m grid lat + dLong ^ _2 * term_II
+                     + dLong ^ _4 * term_III
+                     + dLong ^ _6 * term_IIIa)
                   0
          -- Terms defined in [1].
          term_II   = (v/2) * sinLat * cosLat
-         term_III  = (v/24) * sinLat * cosLat ** 3
-                     * (5 - tanLat ** 2 + 9 * eta2)
-         term_IIIa = (v/720) * sinLat * cosLat ** 5
-                     * (61 - 58 * tanLat ** 2 + tanLat ** 4)
+         term_III  = (v/24) * sinLat * cosLat ^ _3
+                     * (5 - tanLat ^ _2 + 9 * eta2)
+         term_IIIa = (v/720) * sinLat * cosLat ^ _5
+                     * (61 - 58 * tanLat ^ _2 + tanLat ^ _4)
          term_IV   = v * cosLat
-         term_V    = (v/6) * cosLat ** 3 * (v/rho - tanLat ** 2)
-         term_VI   = (v/120) * cosLat ** 5
-                     * (5 - 18 * tanLat ** 2
-                              + tanLat ** 4 + 14 * eta2
-                              - 58 * tanLat ** 2 * eta2)
+         term_V    = (v/6) * cosLat ^ _3 * (v/rho - tanLat ^ _2)
+         term_VI   = (v/120) * cosLat ^ _5
+                     * (5 - 18 * tanLat ^ _2
+                              + tanLat ^ _4 + 14 * eta2
+                              - 58 * tanLat ^ _2 * eta2)
+
+         -- Trace message for debugging. Uncomment this code to inspect intermediate values.
          {-
-         -- Trace message for debugging. Uncomment this code for easy access to intermediate values.
          traceMsg = concat [
             "v    = ", show v, "\n",
             "rho  = ", show rho, "\n",
             "eta2 = ", show eta2, "\n",
             "M    = ", show $ m grid lat, "\n",
-            "I    = ", show $ m grid lat + deltaNorth (falseOrigin grid), "\n",
+            "I    = ", show $ m grid lat - deltaNorth (falseOrigin grid), "\n",  -- 
             "II   = ", show term_II, "\n",
             "III  = ", show term_III, "\n",
             "IIIa = ", show term_IIIa, "\n",

@@ -23,6 +23,7 @@ module Geodetics.Grid (
 
 import Data.Char
 import Geodetics.Altitude
+import Geodetics.Ellipsoids
 import Geodetics.Geodetic
 
 -- | A Grid is a two-dimensional projection of the ellipsoid onto a plane. Any given type of grid can
@@ -111,7 +112,7 @@ offsetDistance = sqrt . offsetDistanceSq
 -- | The square of the distance represented by an offset.
 offsetDistanceSq :: GridOffset -> Double
 offsetDistanceSq off =
-   deltaEast off ** 2 + deltaNorth off ** 2 + deltaAltitude off ** 2
+   deltaEast off ^ _2 + deltaNorth off ^ _2 + deltaAltitude off ^ _2
 
 
 -- | The direction represented by an offset, as bearing to the right of North.
@@ -142,7 +143,7 @@ unsafeGridCoerce base p = GridPoint (eastings p) (northings p) (altitude p) base
 -- in units of one tenth of the grid square, the second one hundredth, and so on.
 -- The first result is the lower limit of the result, and the second is the size
 -- of the specified offset.
--- So for instance @fromGridDigits (100 *~ kilo meter) "237"@ will return
+-- So for instance @fromGridDigits (100 * kilometer) "237"@ will return
 --
 -- > Just (23700 meters, 100 meters)
 --
@@ -150,11 +151,12 @@ unsafeGridCoerce base p = GridPoint (eastings p) (northings p) (altitude p) base
 fromGridDigits :: Double -> String -> Maybe (Double, Double)
 fromGridDigits sq ds = if all isDigit ds then Just (d, p) else Nothing
    where
-      n = length ds
+      n :: Integer
+      n = fromIntegral $ length ds
       d = sum $ zipWith (*)
          (map (fromIntegral . digitToInt) ds)
          (drop 1 $ iterate (/ 10) sq)
-      p = sq / (10 ** (fromIntegral n))
+      p = sq / fromIntegral (10 ^ n)
 
 -- | Convert a distance into a digit string suitable for printing as part
 -- of a grid reference. The result is the nearest position to the specified

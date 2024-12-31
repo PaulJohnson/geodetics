@@ -103,7 +103,7 @@ showAngle a
    where
       sgn = if a < 0 then "-" else ""
       centisecs :: Integer
-      centisecs = abs $ round $ (a * degree * 360000)  -- hundredths of arcsec per degree.
+      centisecs = abs $ round $ (a / (arcsecond / 100))
       (d, m1) = centisecs `divMod` 360000
       (m, s1) = m1 `divMod` 6000   -- hundredths of arcsec per arcmin
       (s, ds) = s1 `divMod` 100
@@ -153,7 +153,7 @@ geoToEarth geo = (
 -- Journal of Geodesy Volume 76, Number 8 (2002), 451-454. Result is in the form
 -- @(latitude, longitude, altitude)@.
 earthToGeo :: (Ellipsoid e) => e -> ECEF -> (Double, Double, Double)
-earthToGeo e (x,y,z) = (phi, atan2 y x, sqrt (l ** 2 + p2) - norm)
+earthToGeo e (x,y,z) = (phi, atan2 y x, sqrt (l ^ _2 + p2) - norm)
    where
       -- Naming: numeric suffix inicates power. Hence x2 = x * x, x3 = x2 * x, etc.
       p2 = x * x + y * y
@@ -203,7 +203,7 @@ geometricalDistance g1 g2 = sqrt $ geometricalDistanceSq g1 g2
 
 -- | The square of the absolute distance.
 geometricalDistanceSq :: (Ellipsoid e) => Geodetic e -> Geodetic e -> Double
-geometricalDistanceSq g1 g2 = (x1-x2) ** 2 + (y1-y2) ** 2 + (z1-z2) ** 2
+geometricalDistanceSq g1 g2 = (x1-x2) ^ _2 + (y1-y2) ^ _2 + (z1-z2) ^ _2
    where
       (x1,y1,z1) = geoToEarth g1
       (x2,y2,z2) = geoToEarth g2
@@ -229,13 +229,13 @@ groundDistance p1 p2 = do
      (_, (lambda, (cos2Alpha, delta, sinDelta, cosDelta, cos2DeltaM))) <-
        listToMaybe $ dropWhile converging $ take 100 $ zip lambdas $ drop 1 lambdas
      let
-       uSq = cos2Alpha * (a**2 - b**2) / b**2
+       uSq = cos2Alpha * (a^ _2 - b^ _2) / b^ _2
        bigA = 1 + uSq/16384 * (4096 + uSq * ((-768) + uSq * ((320 - 175*uSq))))
        bigB =     uSq/1024  * (256  + uSq * ((-128) + uSq * ((74 -  47* uSq))))
        deltaDelta =
          bigB * sinDelta * (cos2DeltaM +
-                             bigB/4 * (cosDelta * (2 * cos2DeltaM**2 - 1)
-                                       - bigB/6 * cos2DeltaM * (4 * sinDelta**2 - 3)
+                             bigB/4 * (cosDelta * (2 * cos2DeltaM^ _2 - 1)
+                                       - bigB/6 * cos2DeltaM * (4 * sinDelta^ _2 - 3)
                                           * (4 * cos2DeltaM - 3)))
        s = b * bigA * (delta - deltaDelta)
        alpha1 = atan2(cosU2 * sin lambda) (cosU1 * sinU2 - sinU1 * cosU2 * cos lambda)
@@ -257,19 +257,19 @@ groundDistance p1 p2 = do
       where
         sinLambda = sin lambda
         cosLambda = cos lambda
-        sinDelta = sqrt((cosU2 * sinLambda) ** 2 +
-                        (cosU1 * sinU2 - sinU1 * cosU2 * cosLambda) ** 2)
+        sinDelta = sqrt((cosU2 * sinLambda) ^ _2 +
+                        (cosU1 * sinU2 - sinU1 * cosU2 * cosLambda) ^ _2)
         cosDelta = sinU1 * sinU2 + cosU1 * cosU2 * cosLambda
         delta = atan2 sinDelta cosDelta
         sinAlpha = if sinDelta == 0 then 0 else cosU1 * cosU2 * sinLambda / sinDelta
-        cos2Alpha = 1 - sinAlpha ** 2
+        cos2Alpha = 1 - sinAlpha ^ _2
         cos2DeltaM = if cos2Alpha == 0
                      then 0
                      else cosDelta - 2 * sinU1 * sinU2 / cos2Alpha
         c = (f/16) * cos2Alpha * (4 + f * (4 - 3 * cos2Alpha))
         lambda1 = l + (1-c) * f * sinAlpha
                   * (delta + c * sinDelta
-                     * (cos2DeltaM + c * cosDelta *(2 * cos2DeltaM ** 2 - 1)))
+                     * (cos2DeltaM + c * cosDelta *(2 * cos2DeltaM ^ _2 - 1)))
     lambdas = iterate (nextLambda . fst) (l, undefined)
     converging ((l1,_),(l2,_)) = abs (l1 - l2) > 1e-14
 

@@ -14,11 +14,12 @@ specific area.
 -}
 
 module Geodetics.Ellipsoids (
-   -- * Conversion constants
+   -- * Useful constants
    degree,
    arcminute,
    arcsecond,
    kilometer,
+   _2, _3, _4, _5, _6, _7,
    -- * Helmert transform between geodetic reference systems
    Helmert (..),
    inverseHelmert,
@@ -69,11 +70,16 @@ arcsecond = arcminute / 60
 kilometer :: Double
 kilometer = 1000
 
-
--- | Small integers, specialised to @Int@, used for raising to powers.
---
--- If you say @x^2@ then Haskell complains that the @2@ has ambiguous type, so you
--- need to say @x^(2::Int)@ to disambiguate it. This gets tedious in complex formulae.
+-- | Lots of geodetic calculations involve integer powers. Writing e.g. @x ^ 2@ causes
+-- GHC to complain that the @2@ has ambiguous type. @x ** 2@ doesn't complain
+-- but is much slower. So for convenience, here are small integers with type @Int@.
+_2, _3, _4, _5, _6, _7 :: Int
+_2 = 2
+_3 = 3
+_4 = 4
+_5 = 5
+_6 = 6
+_7 = 7
 
 -- | 3d vector as @(X,Y,Z)@.
 type Vec3 a = (a,a,a)
@@ -130,7 +136,8 @@ cross3 :: (Num a) => Vec3 a -> Vec3 a -> Vec3 a
 cross3 (x1,y1,z1) (x2,y2,z2) = (y1*z2 - z1*y2, z1*x2 - x1*z2, x1*y2 - y1*x2)
 
 
--- | The 7 parameter Helmert transformation. The monoid instance allows composition.
+-- | The 7 parameter Helmert transformation. The monoid instance allows composition but
+-- is only accurate for the small values used in practical ellipsoids.
 data Helmert = Helmert {
    cX, cY, cZ :: Double,  -- ^ Offset in meters
    helmertScale :: Double,  -- ^ Parts per million
@@ -246,18 +253,18 @@ minorRadius e = majorRadius e * (1 - flattening e)
 
 -- | The eccentricity squared of an ellipsoid.
 eccentricity2 :: (Ellipsoid e) => e -> Double
-eccentricity2 e = 2 * f - (f * f) where f = flattening e
+eccentricity2 e = 2 * f - f^_2 where f = flattening e
 
 -- | The second eccentricity squared of an ellipsoid.
 eccentricity'2 :: (Ellipsoid e) => e -> Double
-eccentricity'2 e = (f * (2 - f)) / (1 - f * f) where f = flattening e
+eccentricity'2 e = (f * (2 - f)) / (1 - f^_2) where f = flattening e
 
 
 -- | Distance in meters from the surface at the specified latitude to the
 -- axis of the Earth straight down. Also known as the radius of
 -- curvature in the prime vertical, and often denoted @N@.
 normal :: (Ellipsoid e) => e -> Double -> Double
-normal e lat = majorRadius e / sqrt (1 - eccentricity2 e * sin lat ^ (2 :: Int))
+normal e lat = majorRadius e / sqrt (1 - eccentricity2 e * sin lat ^ _2)
 
 
 -- | Radius of the circle of latitude: the distance from a point
@@ -271,13 +278,13 @@ latitudeRadius e lat = normal e lat * cos lat
 meridianRadius :: (Ellipsoid e) => e -> Double -> Double
 meridianRadius e lat =
    majorRadius e * (1 - eccentricity2 e)
-   / sqrt ((1 - eccentricity2 e * sin lat ** 2) ** 3)
+   / sqrt ((1 - eccentricity2 e * sin lat ^ _2) ^ _3)
 
 
 -- | Radius of curvature of the ellipsoid perpendicular to the meridian at the specified latitude, in meters.
 primeVerticalRadius :: (Ellipsoid e) => e -> Double -> Double
 primeVerticalRadius e lat =
-   majorRadius e / sqrt (1 - eccentricity2 e * sin lat ^ (2 :: Int))
+   majorRadius e / sqrt (1 - eccentricity2 e * sin lat ^ _2)
 
 
 -- | The isometric latitude. The isometric latitude is conventionally denoted by ψ
