@@ -22,7 +22,7 @@ import Geodetics.Path
 import Geodetics.Stereographic
 import Geodetics.TransverseMercator
 import Geodetics.UK
-
+import LatLongParser (parserTests)
 
 main :: IO ()
 main = do
@@ -89,7 +89,8 @@ tests = [
       testProperty "Rhumb Intersection" prop_rhumbIntersect
       ],
    testGroup "GridOffset" $ map (uncurry testProperty) $ unbatch $ monoid (mempty :: GridOffset),
-   testGroup "Helmert" $ map (uncurry testProperty) $ unbatch $ monoid (mempty :: Helmert)
+   testGroup "Helmert" $ map (uncurry testProperty) $ unbatch $ monoid (mempty :: Helmert),
+   parserTests
    ]
 
 
