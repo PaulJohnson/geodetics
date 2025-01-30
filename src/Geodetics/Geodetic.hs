@@ -89,8 +89,12 @@ readGroundPosition :: (Ellipsoid e) => e -> String -> Maybe (Geodetic e)
 readGroundPosition e str =
    case map fst $ filter (null . snd) $ readP_to_S latLong str of
       [] -> Nothing
-      (lat,long) : _ -> Just $ groundPosition $ Geodetic (lat * degree) (long * degree) undefined e
-
+      (lat,long) : _ -> Just $ groundPosition $ Geodetic
+        { latitude = lat * degree,
+          longitude = long * degree,
+          geoAlt = 0.0,
+          ellipsoid = e
+        }
 
 -- | Show an angle as degrees, minutes and seconds to two decimal places.
 showAngle :: Double -> String
