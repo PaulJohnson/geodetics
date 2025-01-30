@@ -10,6 +10,10 @@ module Geodetics.Geodetic (
    groundDistance,
    properAngle,
    showAngle,
+   showGeodeticLatLong,
+   showGeodeticSignedDecimal,
+   showGeodeticNSEWDecimal,
+   showGeodeticDDDMMSS,
    -- * Earth Centred Earth Fixed Coordinates
    ECEF,
    geoToEarth,
@@ -18,13 +22,13 @@ module Geodetics.Geodetic (
    WGS84 (..)
 ) where
 
-
-import Data.Char (chr)
+import Data.Bool (bool)
 import Data.Maybe
 import Geodetics.Altitude
 import Geodetics.Ellipsoids
 import Geodetics.LatLongParser
 import Text.ParserCombinators.ReadP
+import Text.Printf
 
 -- | Defines a three-D position on or around the Earth using latitude,
 -- longitude and altitude with respect to a specified ellipsoid, with
@@ -62,12 +66,8 @@ data Geodetic e = Geodetic {
 }
 
 instance (Ellipsoid e) => Show (Geodetic e) where
-   show g = concat [
-      showAngle (abs $ latitude g),  " ", letter "SN" (latitude g),  ", ",
-      showAngle (abs $ longitude g), " ", letter "WE" (longitude g), ", ",
-      show (altitude g), " ", show (ellipsoid g)]
-      where letter s n = [s !! (if n < 0 then 0 else 1)]
-
+   show g =
+     showGeodeticLatLong g ++ ", " ++ show (altitude g) ++ " " ++ show (ellipsoid g)
 
 -- | Read the latitude and longitude of a ground position and
 -- return a Geodetic position on the specified ellipsoid.
@@ -99,20 +99,92 @@ readGroundPosition e str =
 -- | Show an angle as degrees, minutes and seconds to two decimal places.
 showAngle :: Double -> String
 showAngle a
-   | isNaN a        = "NaN"  -- Not a Nangle
-   | isInfinite a   = sgn ++ "Infinity"
-   | otherwise      = concat [sgn, show d, [chr 0xB0, ' '],
-                              show m, "\8242 ",
-                              show s, ".", dstr, "\8243" ]
+   | isNaN a        = "NaN"  -- Not an angle
+   | isInfinite a   = sign ++ "Infinity"
+   | otherwise      = printf "%s%d° %d′ %.2f″" sign  d m s
    where
-      sgn = if a < 0 then "-" else ""
-      centisecs :: Integer
-      centisecs = abs $ round $ (a / (arcsecond / 100))
-      (d, m1) = centisecs `divMod` 360000
-      (m, s1) = m1 `divMod` 6000   -- hundredths of arcsec per arcmin
-      (s, ds) = s1 `divMod` 100
-      dstr = reverse $ take 2 $ reverse (show ds) ++ "00" -- Decimal fraction with zero padding.
+     sign = if isPositive then "" else "-"
+     (d, m, s, isPositive) = radianToDegrees a
 
+-- | Show 'Geodetic' as a pair of degrees, minutes, and seconds. This is
+-- similar to the 'Show' instance for 'Geodetic', except it does not include
+-- the altitude and the ellipsoid.
+--
+-- @since 1.1.0
+showGeodeticLatLong :: Geodetic e -> String
+showGeodeticLatLong x =
+  printf
+    "%d° %d′ %.2f″ %c, %d° %d′ %.2f″ %c"
+    latD latM latS (bool 'S' 'N' isNorth)
+    longD longM longS (bool 'W' 'E' isEast)
+  where
+    (latD, latM, latS, isNorth) = radianToDegrees (latitude x)
+    (longD, longM, longS, isEast) = radianToDegrees (longitude x)
+
+-- | Show 'Geodetic' as a pair of signed decimal degrees (5 decimal places
+-- of precision), e.g. 34.52327, -46.23234.
+--
+-- @since 1.1.0
+showGeodeticSignedDecimal :: Geodetic e -> String
+showGeodeticSignedDecimal x =
+  printf
+    "%.5f, %.5f"
+    (toDegrees (latitude x))
+    (toDegrees (longitude x))
+  where
+    toDegrees r = r * 180 / pi
+
+-- | Show 'Geodetic' as a pair of decimal degrees NSEW, e.g. 34.52327N,
+-- 46.23234W.
+--
+-- @since 1.1.0
+showGeodeticNSEWDecimal :: Geodetic e -> String
+showGeodeticNSEWDecimal x =
+  printf
+    "%.5f%c, %.5f%c"
+    (toAbsDegrees (latitude x))
+    (c 'N' 'S' (latitude x))
+    (toAbsDegrees (longitude x))
+    (c 'E' 'W' (longitude x))
+  where
+    toAbsDegrees r = abs (r * 180 / pi)
+    c forPositive forNegative r =
+      if r < 0
+        then forNegative
+        else forPositive
+
+-- | Show 'Geodetic' as a pair of angles in the DDDMMSS format, e.g.
+-- 343123.52N, 461356.43W.
+--
+-- @since 1.1.0
+showGeodeticDDDMMSS ::
+  -- | Use leading zeros
+  Bool ->
+  Geodetic e ->
+  String
+showGeodeticDDDMMSS useLeadingZeros x =
+  printf
+    fmt
+    latD latM latS (bool 'S' 'N' isNorth)
+    longD longM longS (bool 'W' 'E' isEast)
+  where
+    fmt =
+      if useLeadingZeros
+        then "%03d%02d%05.2f%c, %03d%02d%05.2f%c"
+        else "%d%02d%05.2f%c, %d%02d%05.2f%c"
+    (latD, latM, latS, isNorth) = radianToDegrees (latitude x)
+    (longD, longM, longS, isEast) = radianToDegrees (longitude x)
+
+-- | An internal helper function for 'showAngle' and 'showGeodeticDDDMMSS'.
+radianToDegrees :: Double -> (Integer, Integer, Double, Bool)
+radianToDegrees a = (d, m, s, a >= 0)
+  where
+    centisecs :: Integer
+    centisecs = abs $ round $ (a / (arcsecond / 100))
+    (d, m1) = centisecs `divMod` 360000
+    (m, _) = m1 `divMod` 6000   -- hundredths of arcsec per arcmin
+    s = abs $
+      (abs a - fromIntegral d * degree - fromIntegral m * arcminute) / arcsecond
 
 instance (Ellipsoid e) => HasAltitude (Geodetic e) where
    altitude = geoAlt

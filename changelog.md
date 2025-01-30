@@ -27,3 +27,5 @@ Version 1.0.0: Removed dependency on Dimensional library. This is a breaking cha
 ## Version 1.1.0
 
 * Dropped a redundant `Ellipsoid` constraint on `antipode`.
+* Added functions `showGeodeticLatLong`, `showGeodeticSignedDecimal`,
+  `showGeodeticNSEWDecimal`, and `showGeodeticDDDMMSS`.
