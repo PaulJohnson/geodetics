@@ -80,7 +80,7 @@ instance (Ellipsoid e) => Show (Geodetic e) where
 --
 -- * Decimal degrees NSEW: 34.52327N, 46.23234W
 --
--- * Degrees and decimal minutes (units optional): 34° 31.43' N, 46° 13.92'
+-- * Degrees and decimal minutes (units optional): 34° 31.43' N, 46° 13.92' E
 --
 -- * Degrees, minutes and seconds (units optional): 34° 31' 23.52\" N, 46° 13' 56.43\" W
 --
