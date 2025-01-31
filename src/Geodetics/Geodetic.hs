@@ -88,13 +88,19 @@ instance (Ellipsoid e) => Show (Geodetic e) where
 readGroundPosition :: (Ellipsoid e) => e -> String -> Maybe (Geodetic e)
 readGroundPosition e str =
    case map fst $ filter (null . snd) $ readP_to_S latLong str of
-      [] -> Nothing
-      (lat,long) : _ -> Just $ groundPosition $ Geodetic
+      [(lat,long)] -> Just $ groundPosition $ Geodetic
         { latitude = lat * degree,
           longitude = long * degree,
           geoAlt = 0.0,
           ellipsoid = e
         }
+      -- It appears incorrect to accept more than 1 interpretation since
+      -- that would mean a pathological ambiguity in the parser. As stated,
+      -- the accepted grammars do not overlap. Furthermore, should there
+      -- exist several different ways to parse the input, it appears
+      -- dangerous to arbitrarily choose one of them while disregarding the
+      -- others, hence that case should be treated as a failure.
+      _ -> Nothing
 
 -- | Show an angle as degrees, minutes and seconds to two decimal places.
 showAngle :: Double -> String
