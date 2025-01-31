@@ -66,7 +66,6 @@ test-suite GeodeticTest
                    test-framework >= 0.4.1,
                    test-framework-quickcheck2,
                    test-framework-hunit,
-                   array,
                    checkers
   hs-source-dirs:
                    test
