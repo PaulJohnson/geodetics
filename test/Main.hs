@@ -108,7 +108,7 @@ sameAngle :: Double -> Double -> Bool
 sameAngle v1 v2 = abs (properAngle (v1 - v2)) < 0.01 * arcsecond
 
 -- | The grid positions are within 1mm
-sameGrid :: (GridClass r e) => GridPoint r -> GridPoint r -> Bool
+sameGrid :: GridPoint r -> GridPoint r -> Bool
 sameGrid p1 p2 = check eastings && check northings && check altitude
    where check f = f p1 - f p2 < 1e-3
 
@@ -120,7 +120,7 @@ sameOffset go1 go2 = check deltaNorth && check deltaEast && check deltaAltitude
 
 
 -- | The grid X and Y are both within 1 meter
-closeGrid :: (GridClass r e) => GridPoint r -> GridPoint r -> Bool
+closeGrid :: GridPoint r -> GridPoint r -> Bool
 closeGrid p1 p2 = check eastings && check northings && check altitude
    where check f = f p1 - f p2 < 1
 

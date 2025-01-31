@@ -156,7 +156,7 @@ fromGridDigits sq ds = if all isDigit ds then Just (d, p) else Nothing
       d = sum $ zipWith (*)
          (map (fromIntegral . digitToInt) ds)
          (drop 1 $ iterate (/ 10) sq)
-      p = sq / fromIntegral (10 ^ n)
+      p = sq / fromIntegral ((10 :: Integer) ^ n)
 
 -- | Convert a distance into a digit string suitable for printing as part
 -- of a grid reference. The result is the nearest position to the specified
