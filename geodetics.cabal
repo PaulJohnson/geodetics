@@ -3,6 +3,7 @@ name:           geodetics
 version:        1.0.0
 build-type:     Simple
 author:         Paul Johnson <paul@cogito.org.uk>
+tested-with:    ghc ==9.6.6 ghc ==9.8.4 ghc ==9.10.1 ghc ==9.12.1
 data-files:
                 AddingProjections.txt,
                 LICENSE,
