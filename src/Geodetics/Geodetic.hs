@@ -118,7 +118,7 @@ instance (Ellipsoid e) => HasAltitude (Geodetic e) where
 
 -- | The point on the Earth diametrically opposite the argument, with
 -- the same altitude.
-antipode :: (Ellipsoid e) => Geodetic e -> Geodetic e
+antipode :: Geodetic e -> Geodetic e
 antipode g = Geodetic lat long (geoAlt g) (ellipsoid g)
    where
       lat = negate $ latitude g

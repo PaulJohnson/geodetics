@@ -23,3 +23,7 @@ Version 0.1.2: Fixed bugs #16 and #17: Unicode PRIME and DOUBLE PRIME now allowe
 
 Version 1.0.0: Removed dependency on Dimensional library. This is a breaking change:
    hence the major version bump. Also fixed bug #18 (and #19).
+
+## Version 1.1.0
+
+* Dropped a redundant `Ellipsoid` constraint on `antipode`.
