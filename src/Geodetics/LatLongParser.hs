@@ -114,6 +114,7 @@ degreesDecimalMinutesUnits = do
    (s, a) <- gather $ do
       d <- fromIntegral <$> option 0 (natural <* char '°')
       guard $ d <= 360
+      skipSpaces
       m <- option 0 (decimal <* minuteTick)
       guard $ m < 60
       return $ d + m / 60
