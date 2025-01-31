@@ -28,13 +28,17 @@ source-repository head
   type:     git
   location: https://github.com/PaulJohnson/geodetics
 
+flag dev
+    description: Turn on development settings.
+    default:     False
+    manual:      True
+
 library
   hs-source-dirs:  src
   build-depends:
                    base >= 4.17 && < 5,
                    array,
                    Stream
-  ghc-options:     -Wall
   exposed-modules:
                    Geodetics.Altitude,
                    Geodetics.Ellipsoids,
@@ -46,6 +50,10 @@ library
                    Geodetics.TransverseMercator,
                    Geodetics.UK
   Default-Language: Haskell2010
+  if flag(dev)
+      ghc-options:
+          -Wall -Werror -Wredundant-constraints -Wpartial-fields
+          -Wunused-packages
 
 test-suite GeodeticTest
   type:            exitcode-stdio-1.0
@@ -62,7 +70,11 @@ test-suite GeodeticTest
                    checkers
   hs-source-dirs:
                    test
-  ghc-options:     -Wall -rtsopts
+  ghc-options:     -rtsopts
   other-modules:
                    ArbitraryInstances
   Default-Language: Haskell2010
+  if flag(dev)
+      ghc-options:
+          -Wall -Werror -Wredundant-constraints -Wpartial-fields
+          -Wunused-packages
