@@ -207,11 +207,7 @@ class (Show a, Eq a) => Ellipsoid a where
 -- The WGS84 has a special place in this library as the standard Ellipsoid against
 -- which all others are defined.
 data WGS84 = WGS84
-
-instance Eq WGS84 where _ == _ = True
-
-instance Show WGS84 where
-   show _ = "WGS84"
+  deriving (Eq, Show)
 
 instance Ellipsoid WGS84 where
    majorRadius _ = 6378137.0

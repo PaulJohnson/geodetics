@@ -42,14 +42,7 @@ class GridClass r e | r->e where
 data GridPoint r = GridPoint {
    eastings, northings, altGP :: Double,
    gridBasis :: r
-} deriving (Show)
-
-
-instance Eq (GridPoint r) where
-   p1 == p2  =
-      eastings p1 == eastings p2 &&
-      northings p1 == northings p2 &&
-      altGP p1 == altGP p2
+} deriving (Eq, Show)
 
 instance HasAltitude (GridPoint g) where
    altitude = altGP

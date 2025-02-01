@@ -33,7 +33,7 @@ import Text.ParserCombinators.ReadP
 -- places, which is a
 -- resolution of about 1m on the Earth's surface. Internally latitude
 -- and longitude are stored as double precision radians. Convert to
--- degrees using e.g.  @latitude g /~ degree@.
+-- degrees using e.g.  @latitude g / degree@.
 --
 -- The functions here deal with altitude by assuming that the local
 -- height datum is always co-incident with the ellipsoid in use,
@@ -80,7 +80,7 @@ instance (Ellipsoid e) => Show (Geodetic e) where
 --
 -- * Decimal degrees NSEW: 34.52327N, 46.23234W
 --
--- * Degrees and decimal minutes (units optional): 34° 31.43' N, 46° 13.92'
+-- * Degrees and decimal minutes (units optional): 34° 31.43' N, 46° 13.92' E
 --
 -- * Degrees, minutes and seconds (units optional): 34° 31' 23.52\" N, 46° 13' 56.43\" W
 --
@@ -89,8 +89,12 @@ readGroundPosition :: (Ellipsoid e) => e -> String -> Maybe (Geodetic e)
 readGroundPosition e str =
    case map fst $ filter (null . snd) $ readP_to_S latLong str of
       [] -> Nothing
-      (lat,long) : _ -> Just $ groundPosition $ Geodetic (lat * degree) (long * degree) undefined e
-
+      (lat,long) : _ -> Just $ groundPosition $ Geodetic
+        { latitude = lat * degree,
+          longitude = long * degree,
+          geoAlt = 0.0,
+          ellipsoid = e
+        }
 
 -- | Show an angle as degrees, minutes and seconds to two decimal places.
 showAngle :: Double -> String
