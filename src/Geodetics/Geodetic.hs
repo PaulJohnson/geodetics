@@ -33,7 +33,7 @@ import Text.ParserCombinators.ReadP
 -- places, which is a
 -- resolution of about 1m on the Earth's surface. Internally latitude
 -- and longitude are stored as double precision radians. Convert to
--- degrees using e.g.  @latitude g /~ degree@.
+-- degrees using e.g.  @latitude g / degree@.
 --
 -- The functions here deal with altitude by assuming that the local
 -- height datum is always co-incident with the ellipsoid in use,
