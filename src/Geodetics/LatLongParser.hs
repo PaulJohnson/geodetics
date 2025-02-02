@@ -43,6 +43,10 @@ secondTick = void $ choice [char '"', char '\8243']
 decimal :: ReadP Double
 decimal = do
    str1 <- munch1 isDigit
+   -- In order to avoid ambiguity where 'decimal' and 'dms7' both match
+   -- (which can happen in cases with several leading zeros for very small
+   -- angles), stipulate that str1 is sufficiently short.
+   guard (length str1 < 5)
    option (read str1) $ do
       str2 <- char '.' *> munch1 isDigit
       return $ read $ str1 ++ '.' : str2
@@ -69,33 +73,26 @@ degreesMinutesSeconds = do
    d <- fromIntegral <$> natural
    guard $ d <= 360
    skipSpaces
-   ms <- option 0 $ do
-      m <- fromIntegral <$> natural
-      guard $ m < 60
-      skipSpaces
-      s <- option 0 decimal
-      guard $ s < 60
-      return $ m / 60 + s / 3600
-   return $ d + ms
-
+   m <- fromIntegral <$> natural
+   guard $ m < 60
+   skipSpaces
+   s <- decimal
+   guard $ s < 60
+   return $ d + m / 60 + s / 3600
 
 -- | Parse an unsigned angle written using degrees, minutes and seconds with units (° ' \").
 -- At least one component must be specified.
 degreesMinutesSecondsUnits :: ReadP Double
 degreesMinutesSecondsUnits = do
-   (s, a) <- gather $ do
-      d <- fromIntegral <$> option 0 (natural <* char '°')
-      guard $ d <= 360
-      skipSpaces
-      m <- fromIntegral <$> option 0 (natural <* minuteTick)
-      guard $ m < 60
-      skipSpaces
-      s <- option 0 (decimal <* secondTick)
-      guard $ s < 60
-      return $ d + m / 60 + s / 3600
-   guard $ not $ null s  -- Must specify at least one component.
-   return a
-
+   d <- fromIntegral <$> natural <* char '°'
+   guard $ d <= 360
+   skipSpaces
+   m <- fromIntegral <$> natural <* minuteTick
+   guard $ m < 60
+   skipSpaces
+   s <- decimal <* secondTick
+   guard $ s < 60
+   return $ d + m / 60 + s / 3600
 
 -- | Parse an unsigned angle written using degrees and decimal minutes.
 degreesDecimalMinutes :: ReadP Double
@@ -103,7 +100,7 @@ degreesDecimalMinutes = do
    d <- fromIntegral <$> natural
    skipSpaces
    guard $ d <= 360   -- Difference from degreesMinutesSeconds just to shut style checker up.
-   m <- option 0 decimal
+   m <- decimal
    guard $ m < 60
    return $ d + m/60
 
@@ -111,15 +108,12 @@ degreesDecimalMinutes = do
 -- | Parse an unsigned angle written using degrees and decimal minutes with units (° ')
 degreesDecimalMinutesUnits :: ReadP Double
 degreesDecimalMinutesUnits = do
-   (s, a) <- gather $ do
-      d <- fromIntegral <$> option 0 (natural <* char '°')
-      guard $ d <= 360
-      m <- option 0 (decimal <* minuteTick)
-      guard $ m < 60
-      return $ d + m / 60
-   guard $ not $ null s  -- Must specify at least one component.
-   return a
-
+   d <- fromIntegral <$> natural <* char '°'
+   guard $ d <= 360
+   skipSpaces
+   m <- decimal <* minuteTick
+   guard $ m < 60
+   return $ d + m / 60
 
 -- | Parse an unsigned angle written in DDDMMSS.ss format.
 -- Leading zeros on the degrees and decimal places on the seconds are optional

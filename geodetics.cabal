@@ -73,6 +73,7 @@ test-suite GeodeticTest
   ghc-options:     -rtsopts
   other-modules:
                    ArbitraryInstances
+                   LatLongParser
   Default-Language: Haskell2010
   if flag(dev)
       ghc-options:
