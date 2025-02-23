@@ -186,7 +186,7 @@ radianToDegrees :: Double -> (Integer, Integer, Double, Bool)
 radianToDegrees a = (d, m, s, a >= 0)
   where
     centisecs :: Integer
-    centisecs = abs $ round $ (a / (arcsecond / 100))
+    centisecs = abs $ round (a / (arcsecond / 100))
     (d, m1) = centisecs `divMod` 360000
     (m, _) = m1 `divMod` 6000   -- hundredths of arcsec per arcmin
     s = abs $
@@ -312,16 +312,16 @@ groundDistance p1 p2 = do
        listToMaybe $ dropWhile converging $ take 100 $ zip lambdas $ drop 1 lambdas
      let
        uSq = cos2Alpha * (a^ _2 - b^ _2) / b^ _2
-       bigA = 1 + uSq/16384 * (4096 + uSq * ((-768) + uSq * ((320 - 175*uSq))))
-       bigB =     uSq/1024  * (256  + uSq * ((-128) + uSq * ((74 -  47* uSq))))
+       bigA = 1 + uSq/16384 * (4096 + uSq * ((-768) + uSq * (320 - 175*uSq)))
+       bigB =     uSq/1024  * (256  + uSq * ((-128) + uSq * (74 -  47* uSq)))
        deltaDelta =
          bigB * sinDelta * (cos2DeltaM +
                              bigB/4 * (cosDelta * (2 * cos2DeltaM^ _2 - 1)
                                        - bigB/6 * cos2DeltaM * (4 * sinDelta^ _2 - 3)
                                           * (4 * cos2DeltaM - 3)))
        s = b * bigA * (delta - deltaDelta)
-       alpha1 = atan2(cosU2 * sin lambda) (cosU1 * sinU2 - sinU1 * cosU2 * cos lambda)
-       alpha2 = atan2(cosU1 * sin lambda) (cosU1 * sinU2 * cos lambda - sinU1 * cosU2)
+       alpha1 = atan2 (cosU2 * sin lambda) (cosU1 * sinU2 - sinU1 * cosU2 * cos lambda)
+       alpha2 = atan2 (cosU1 * sin lambda) (cosU1 * sinU2 * cos lambda - sinU1 * cosU2)
      return (s, alpha1, alpha2)
   where
     f = flattening $ ellipsoid p1
@@ -339,7 +339,7 @@ groundDistance p1 p2 = do
       where
         sinLambda = sin lambda
         cosLambda = cos lambda
-        sinDelta = sqrt((cosU2 * sinLambda) ^ _2 +
+        sinDelta = sqrt ((cosU2 * sinLambda) ^ _2 +
                         (cosU1 * sinU2 - sinU1 * cosU2 * cosLambda) ^ _2)
         cosDelta = sinU1 * sinU2 + cosU1 * cosU2 * cosLambda
         delta = atan2 sinDelta cosDelta

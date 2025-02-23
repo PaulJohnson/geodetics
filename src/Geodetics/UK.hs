@@ -33,8 +33,8 @@ instance Ellipsoid OSGB36 where
    majorRadius _ = 6377563.396
    flatR _ = 299.3249646
    helmert _ = Helmert {
-      cX = 446.448, cY = (-125.157), cZ = 542.06,
-      helmertScale = (-20.4894),
+      cX = 446.448, cY = -125.157, cZ = 542.06,
+      helmertScale = -20.4894,
       rX = 0.1502 * arcsecond, rY = 0.247 * arcsecond, rZ = 0.8421 * arcsecond }
 
 -- | The UK National Grid is a Transverse Mercator projection with a true origin at
@@ -100,10 +100,10 @@ fromUkGridLetters :: Char -> Char -> Maybe (GridPoint UkNationalGrid)
 fromUkGridLetters c1 c2 = applyOffset <$> (mappend <$> g1 <*> g2) <*> letterOrigin
    where
       letterOrigin = Just $ GridPoint ((-1000) * kilometer) ((-500) * kilometer) m0 UkNationalGrid
-      gridIndex c =
-         if inRange ('A', 'H') c then Just $ ord c - ord 'A'  -- 'I' is not used.
-         else if inRange ('J', 'Z') c then Just $ ord c - ord 'B'
-         else Nothing
+      gridIndex c
+         | inRange ('A', 'H') c  = Just $ ord c - ord 'A'  -- 'I' is not used.
+         | inRange ('J', 'Z') c  = Just $ ord c - ord 'B'
+         | otherwise             = Nothing
       gridSquare c = do -- Maybe monad
          g <- gridIndex c
          let (y,x) = g `divMod` 5
