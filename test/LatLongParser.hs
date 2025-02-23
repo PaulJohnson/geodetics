@@ -5,10 +5,8 @@ module LatLongParser (parserTests) where
 
 import ArbitraryInstances ()
 import Geodetics.Geodetic
-import Test.Framework (Test, testGroup)
-import Test.Framework.Providers.HUnit
-import Test.Framework.Providers.QuickCheck2 (testProperty)
-import qualified Test.HUnit as HU
+import Test.Hspec
+import Test.Hspec.QuickCheck
 import Test.QuickCheck hiding ((===))
 
 -- | The 'Coordinates' that certain test cases must return.
@@ -20,55 +18,54 @@ expected3 = Coordinates 0.6025435083245063 (-0.8069065829902962)
 expected4 = Coordinates 0.6025409872933646 (-0.8069044982914674)
 expected5 = Coordinates 0.3139836658436815 (-5.259743626357356e-4)
 
-parserTests :: Test
+parserTests :: SpecWith ()
 parserTests =
-  testGroup
-    "LatLongParser"
-    [ testTree
-        "Signed decimal degrees"
-        ("34.52327", "-46.23234")
-        (commaOrNot (produces expected0)),
-      testTree
-        "Decimal degrees NSEW"
-        ("34.52327N", "46.23234W")
-        (abOrBa (commaOrNot (produces expected0))),
-      testTree
-        "Degrees and decimal minutes, with decimal point"
-        ("34° 31.43' N", "46° 13.92' W")
-        (allVariations expected1),
-      testTree
-        "Degrees and decimal minutes, without decimal point"
-        ("34° 31' N", "46° 13' W")
-        (allVariations expected2),
-      testTree
-        "Degrees, minutes and seconds, with decimal point"
-        ("34° 31' 23.52\" N", "46° 13' 56.43\" W")
-        (allVariations expected3),
-      testTree
-        "Degrees, minutes and seconds, without decimal point"
-        ("34° 31' 23\" N", "46° 13' 56\" W")
-        (allVariations expected4),
-      testTree
-        "DDDMMSS format, no leading zeros, with decimal point"
-        ("343123.52N", "461356.43W")
-        (abOrBa (commaOrNot (produces expected3))),
-      testTree
-        "DDDMMSS format, with leading zeros, with decimal point"
-        ("343123.52N", "0461356.43W")
-        (abOrBa (commaOrNot (produces expected3))),
-      testTree
-        "DDDMMSS format, no decimal point"
-        ("343123N", "0461356W")
-        (abOrBa (commaOrNot (produces expected4))),
-      testTree
-        "Very small angles in the DDDMMSS format are unambiguous"
-        ("175923.78N", "00148.49W")
-        (abOrBa (commaOrNot (produces expected5))),
-      testProperty "degrees, minutes, seconds roundtrip" dmsRoundtrip,
-      testProperty "signed decimal roundtrip" signedDecimalRoundtrip,
-      testProperty "decimal degrees NSEW roundtrip" decimalDegreesNSEWRoundtrip,
-      testProperty "DDDMMSS roundtrip" dddmmssRoundtrip
-    ]
+  describe "LatLongParser" $ do
+    testTree
+      "Signed decimal degrees"
+      ("34.52327", "-46.23234")
+      (commaOrNot (produces expected0))
+    testTree
+      "Decimal degrees NSEW"
+      ("34.52327N", "46.23234W")
+      (abOrBa (commaOrNot (produces expected0)))
+    testTree
+      "Degrees and decimal minutes, with decimal point"
+      ("34° 31.43' N", "46° 13.92' W")
+      (allVariations expected1)
+    testTree
+      "Degrees and decimal minutes, without decimal point"
+      ("34° 31' N", "46° 13' W")
+      (allVariations expected2)
+    testTree
+      "Degrees, minutes and seconds, with decimal point"
+      ("34° 31' 23.52\" N", "46° 13' 56.43\" W")
+      (allVariations expected3)
+    testTree
+      "Degrees, minutes and seconds, without decimal point"
+      ("34° 31' 23\" N", "46° 13' 56\" W")
+      (allVariations expected4)
+    testTree
+      "DDDMMSS format, no leading zeros, with decimal point"
+      ("343123.52N", "461356.43W")
+      (abOrBa (commaOrNot (produces expected3)))
+    testTree
+      "DDDMMSS format, with leading zeros, with decimal point"
+      ("343123.52N", "0461356.43W")
+      (abOrBa (commaOrNot (produces expected3)))
+    testTree
+      "DDDMMSS format, no decimal point"
+      ("343123N", "0461356W")
+      (abOrBa (commaOrNot (produces expected4)))
+    testTree
+      "Very small angles in the DDDMMSS format are unambiguous"
+      ("175923.78N", "00148.49W")
+      (abOrBa (commaOrNot (produces expected5)))
+    prop "degrees, minutes, seconds roundtrip" dmsRoundtrip
+    prop "signed decimal roundtrip" signedDecimalRoundtrip
+    prop "decimal degrees NSEW roundtrip" decimalDegreesNSEWRoundtrip
+    prop "DDDMMSS roundtrip" dddmmssRoundtrip
+
 
 ----------------------------------------------------------------------------
 -- The Coordinates type
@@ -106,11 +103,12 @@ testTree ::
   -- | The input
   input ->
   -- | The test generator
-  (input -> [Test]) ->
+  (input -> SpecWith ()) ->
   -- | The resulting test
-  Test
+  SpecWith ()
 testTree testTreeName input generator =
-  testGroup testTreeName (generator input)
+  describe testTreeName (generator input)
+
 
 -- | Stipulate that parsing the input produces the expected result.
 produces ::
@@ -119,38 +117,35 @@ produces ::
   -- | The input
   String ->
   -- | The resulting collection of tests
-  [Test]
+  SpecWith (Arg Expectation)
 produces expected input =
-  [ testCase
-      caseName
-      (HU.assertEqual "" (Just expected) mcoordinates)
-  ]
+  it caseName $ Just expected `shouldBe` mcoordinates
   where
     caseName = "Input: \"" ++ input ++ "\" -> " ++ show expected
     mcoordinates = geodeticToCoordinates <$> readGroundPosition WGS84 input
 
+
 -- | The two 'String's will be examined in various orders.
-abOrBa :: ((String, String) -> [Test]) -> (String, String) -> [Test]
-abOrBa f (a, b) =
-  [ testGroup "straight order" (f (a, b)),
-    testGroup "reverse order" (f (b, a))
-  ]
+abOrBa :: ((String, String) -> SpecWith (Arg Expectation)) -> (String, String) -> SpecWith (Arg Expectation)
+abOrBa f (a, b) = do
+  describe "straight order" (f (a, b))
+  describe "reverse order" (f (b, a))
+
 
 -- | Two two 'String's will be concatenated with a space between them and
 -- with a comma and a space between them.
-commaOrNot :: (String -> [Test]) -> (String, String) -> [Test]
-commaOrNot f (a, b) =
-  [ testGroup "with comma" (f (a ++ ", " ++ b)),
-    testGroup "without comma" (f (a ++ " " ++ b))
-  ]
+commaOrNot :: (String -> SpecWith (Arg Expectation)) -> (String, String) -> SpecWith (Arg Expectation)
+commaOrNot f (a, b) = do
+  describe "with comma" (f (a ++ ", " ++ b))
+  describe "without comma" (f (a ++ " " ++ b))
+
 
 -- | Test with and without units both in normal and Unicode version.
-variousUnits :: (String -> [Test]) -> String -> [Test]
-variousUnits f input =
-  [ testGroup "without Unicode" (f input),
-    testGroup "with Unicode" (f unicode),
-    testGroup "without units" (f noUnits)
-  ]
+variousUnits :: (String -> SpecWith ()) -> String -> SpecWith ()
+variousUnits f input = do
+  describe "without Unicode" (f input)
+  describe "with Unicode" (f unicode)
+  describe "without units" (f noUnits)
   where
     unicode = g <$> input
     g '\'' = '′'
@@ -165,10 +160,12 @@ variousUnits f input =
       '″' -> True
       _ -> False
 
+
 -- | Tests with all possible variations.
-allVariations :: Coordinates -> (String, String) -> [Test]
+allVariations :: Coordinates -> (String, String) -> SpecWith (Arg Expectation)
 allVariations expected =
   abOrBa (commaOrNot (variousUnits (produces expected)))
+
 
 ----------------------------------------------------------------------------
 -- The machinery for roundtrip property tests

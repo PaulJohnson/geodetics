@@ -1,14 +1,14 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Redundant bracket" #-}
 
 module Main where
 
+import Control.Monad
+import Data.Either
 import Data.Maybe
-import Test.Framework (Test, defaultMainWithOpts, testGroup)
-import Test.Framework.Options (TestOptions, TestOptions'(..))
-import Test.Framework.Runners.Options (RunnerOptions, RunnerOptions'(..))
-import Test.Framework.Providers.HUnit
-import Test.Framework.Providers.QuickCheck2 (testProperty)
-import qualified Test.HUnit as HU
+import Test.Hspec
+import Test.Hspec.QuickCheck
 import Test.QuickCheck
 import Test.QuickCheck.Checkers (EqProp, eq, (=-=), unbatch)
 import Test.QuickCheck.Classes (monoid)
@@ -22,21 +22,49 @@ import Geodetics.Path
 import Geodetics.Stereographic
 import Geodetics.TransverseMercator
 import Geodetics.UK
+import Geodetics.UTM
 import LatLongParser (parserTests)
 
 main :: IO ()
-main = do
-   let empty_test_opts = mempty :: TestOptions
-   let my_test_opts = empty_test_opts {
-     topt_maximum_generated_tests = Just 1000
-   }
-
-   let empty_runner_opts = mempty :: RunnerOptions
-   let my_runner_opts = empty_runner_opts {
-     ropt_test_options = Just my_test_opts
-   }
-
-   defaultMainWithOpts tests my_runner_opts
+main = hspec $ do
+   describe "Geodetic" $ do
+      prop "WGS84 and back" prop_WGS84_and_back
+      prop "Zero ground distance" prop_zero_ground
+      describe "UK Points" $ mapM_ pointTest ukPoints
+      describe "World line" $ mapM_ worldLineTests worldLines
+   parserTests
+   describe "Grid" $ do
+      prop "Grid Offset 1" prop_offset1
+      prop "Grid Offset 2" prop_offset2
+      prop "Grid Offset 3" prop_offset3
+      prop "Grid 1" prop_grid1
+   describe "TransverseMercator" $ prop "fromGrid . toGrid == id" prop_tmGridInverse
+   describe "UK" $ do
+      prop "UK Grid 1" prop_ukGrid1
+      describe "UK Grid 2" $ mapM_ ukGridTest2 ukSampleGrid
+      describe "UK Grid 3" $ mapM_ ukGridTest3 ukSampleGrid
+      describe "UK Grid 4" $ mapM_ ukGridTest4 ukSampleGrid
+      describe "UK Grid 5" $ mapM_ ukGridTest5 ukSampleGrid
+   describe "UTM" $ do
+      prop "UTM Grid 1" prop_utmGridTest1
+      describe "UTM Grid 2" $ mapM_ utmGridTest2 utmSampleGrid
+      describe "UTM Grid 3" $ mapM_ utmGridTest3 utmSampleGrid
+      describe "UTM Grid 4" $ mapM_ utmGridTest4 utmSampleGrid
+      describe "UTM Grid 5" $ mapM_ utmGridTest5 utmSampleGrid
+   describe "Stereographic" $ do
+      it "toGrid north" stereographicToGridN
+      it "fromGrid north" stereographicFromGridN
+      it "toGrid south" stereographicToGridS
+      it "fromGrid south" stereographicFromGridS
+      prop "Stereographic round trip" prop_stereographic
+   describe "Paths" $ do
+      prop "Ray Path 1" prop_rayPath1
+      prop "Ray Continuity" prop_rayContinuity
+      prop "Ray Bisection" prop_rayBisect
+      prop "Rhumb Continuity" prop_rhumbContinuity
+      prop "Rhumb Intersection" prop_rhumbIntersect
+   describe "GridOffset monoid" $ mapM_ (uncurry prop) $ unbatch $ monoid (mempty :: GridOffset)
+   describe "Helmert monoid" $ mapM_ (uncurry prop) $ unbatch $ monoid (mempty :: Helmert)
 
 instance EqProp GridOffset where
   (GridOffset a b c) =-= (GridOffset a' b' c') =
@@ -50,87 +78,65 @@ instance EqProp Helmert where
                    rX' ≈- rX'', rY' ≈- rY'', rZ' ≈- rZ'']
 
     where x ≈ y = abs (x - y) < 0.00001
-          x ≈- y = abs (x - y) < (1 / (5 * 2) ^ _5)
-
-tests :: [Test]
-tests = [
-   testGroup "Geodetic" [
-      testProperty "WGS84 and back" prop_WGS84_and_back,
-      testProperty "Zero ground distance" prop_zero_ground,
-      testGroup "UK Points" $ map pointTest ukPoints],
-      testGroup "World lines" $ map worldLineTests worldLines,
-   testGroup "Grid" [
-      testProperty "Grid Offset 1" prop_offset1,
-      testProperty "Grid Offset 2" prop_offset2,
-      testProperty "Grid Offset 3" prop_offset3,
-      testProperty "Grid 1" prop_grid1 ],
-   testGroup "TransverseMercator" [
-      testCase "fromGrid . toGrid == id" $ HU.assertBool "" prop_tmGridInverse
-      ],
-   testGroup "UK" [
-      testProperty "UK Grid 1" prop_ukGrid1,
-      testGroup "UK Grid 2" $ map ukGridTest2 ukSampleGrid,
-      testGroup "UK Grid 3" $ map ukGridTest3 ukSampleGrid,
-      testGroup "UK Grid 4" $ map ukGridTest4 ukSampleGrid,
-      testGroup "UK Grid 5" $ map ukGridTest5 ukSampleGrid
-      ],
-   testGroup "Stereographic" [
-      testCase "toGrid north" $ HU.assertBool "" stereographicToGridN,
-      testCase "fromGrid north" $ HU.assertBool "" stereographicFromGridN,
-      testCase "toGrid south" $ HU.assertBool "" stereographicToGridS,
-      testCase "fromGrid south" $ HU.assertBool "" stereographicFromGridS,
-      testProperty "Stereographic round trip" prop_stereographic
-      ],
-   testGroup "Paths" [
-      testProperty "Ray Path 1" prop_rayPath1,
-      testProperty "Ray Continuity" prop_rayContinuity,
-      testProperty "Ray Bisection" prop_rayBisect,
-      testProperty "Rhumb Continuity" prop_rhumbContinuity,
-      testProperty "Rhumb Intersection" prop_rhumbIntersect
-      ],
-   testGroup "GridOffset" $ map (uncurry testProperty) $ unbatch $ monoid (mempty :: GridOffset),
-   testGroup "Helmert" $ map (uncurry testProperty) $ unbatch $ monoid (mempty :: Helmert),
-   parserTests
-   ]
+          x ≈- y = abs (x - y) < 1 / (5 * 2) ^ _5
 
 
 -- | The positions are within 30 cm.
-samePlace :: (Ellipsoid e) => Geodetic e -> Geodetic e -> Bool
-samePlace p1 p2 = geometricalDistance p1 p2 < 0.3
+samePlace :: (Ellipsoid e) => Geodetic e -> Geodetic e -> Expectation
+samePlace p1 p2 = expectTrue msg $ geometricalDistance p1 p2 < 0.3
+   where
+      msg = "location " <> show p2 <> " is > 30cm from expected " <> show p1
 
+samePlace' :: (Ellipsoid e) => Geodetic e -> Geodetic e -> Bool
+samePlace' p1 p2 = geometricalDistance p1 p2 < 0.3
 
 -- | The positions are within 10 m.
-closeEnough :: (Ellipsoid e) => Geodetic e -> Geodetic e -> Bool
-closeEnough p1 p2 = geometricalDistance p1 p2 < 10
+closeEnough :: (Ellipsoid e) => Geodetic e -> Geodetic e -> Expectation
+closeEnough p1 p2 = expectTrue msg $ geometricalDistance p1 p2 < 10
+   where
+      msg = "location " <> show p2 <> " is > 10m from expected " <> show p1
 
+closeEnough' :: (Ellipsoid e) => Geodetic e -> Geodetic e -> Bool
+closeEnough' p1 p2 = geometricalDistance p1 p2 < 10
 
 -- | The angles are within 0.01 arcsec
-sameAngle :: Double -> Double -> Bool
-sameAngle v1 v2 = abs (properAngle (v1 - v2)) < 0.01 * arcsecond
+sameAngle :: Double -> Double -> Expectation
+sameAngle v1 v2 = expectTrue msg $ abs (properAngle (v1 - v2)) < 0.01 * arcsecond
+   where
+      msg = "expected angle " <> show (v1 / degree) <> ", got " <> show (v2 / degree)
+
+sameAngle' :: Double -> Double -> Bool
+sameAngle' v1 v2 = abs (properAngle (v1 - v2)) < 0.01 * arcsecond
 
 -- | The grid positions are within 1mm
-sameGrid :: GridPoint r -> GridPoint r -> Bool
-sameGrid p1 p2 = check eastings && check northings && check altitude
-   where check f = f p1 - f p2 < 1e-3
-
+sameGrid :: (Show r) => GridPoint r -> GridPoint r -> Expectation
+sameGrid p1 p2 = expectTrue msg $ check eastings && check northings && check altitude
+   where
+      msg = "expected " <> show p1 <> ", got " <> show p2
+      check f = f p1 - f p2 < 1e-3
 
 -- | Grid offsets are within 1mm.
-sameOffset :: GridOffset -> GridOffset -> Bool
-sameOffset go1 go2 = check deltaNorth && check deltaEast && check deltaAltitude
-   where check f = f go1 - f go2 < 1e-3
+sameOffset :: GridOffset -> GridOffset -> Expectation
+sameOffset go1 go2 = expectTrue msg $ check deltaNorth && check deltaEast && check deltaAltitude
+   where
+      msg = "expected " <> show go1 <> ", got " <> show go2
+      check f = f go1 - f go2 < 1e-3
 
 
 -- | The grid X and Y are both within 1 meter
-closeGrid :: GridPoint r -> GridPoint r -> Bool
-closeGrid p1 p2 = check eastings && check northings && check altitude
-   where check f = f p1 - f p2 < 1
+closeGrid :: (Show r) => GridPoint r -> GridPoint r -> Expectation
+closeGrid p1 p2 = expectTrue msg $ check eastings && check northings && check altitude
+   where
+      msg = "expected " <> show p1 <> ", got " <> show p2
+      check f = f p1 - f p2 < 1
+
 
 -- | Degrees, minutes and seconds into radians.
 dms :: Int -> Int -> Double -> Double
 dms d m s = fromIntegral d * degree + fromIntegral m * arcminute + s * arcsecond
 
 -- | Round-trip from local to WGS84 and back is identity (approximately)
-prop_WGS84_and_back :: Geodetic LocalEllipsoid -> Bool
+prop_WGS84_and_back :: Geodetic LocalEllipsoid -> Expectation
 prop_WGS84_and_back p = samePlace p $ toLocal (ellipsoid p) $ toWGS84 p
 
 
@@ -155,8 +161,8 @@ worldLines = [
       10001965.729, 0 * degree, 180 * degree)]
 
 
-worldLineTests :: (String, Geodetic WGS84, Geodetic WGS84, Double, Double, Double) -> Test
-worldLineTests (str, g1, g2, d, a, b) = testCase str $ HU.assertBool "" $ ok $ groundDistance g1 g2
+worldLineTests :: (String, Geodetic WGS84, Geodetic WGS84, Double, Double, Double) -> SpecWith (Arg Expectation)
+worldLineTests (str, g1, g2, d, a, b) = it str $ ok $ groundDistance g1 g2
    where
       ok Nothing = False
       ok (Just (d1, a1, b1)) =
@@ -183,37 +189,37 @@ ukPoints = [
 
 
 -- Convert a named point into a test
-pointTest :: (Ellipsoid e2) => (String, Geodetic WGS84, Geodetic e2) -> Test
-pointTest (testName, wgs84, local) =  testCase testName $ HU.assertBool "" $ samePlace wgs84 (toWGS84 local)
+pointTest :: (Ellipsoid e2) => (String, Geodetic WGS84, Geodetic e2) -> SpecWith (Arg Expectation)
+pointTest (testName, wgs84, local) =  it testName $ wgs84 `samePlace` toWGS84 local
 
 
 -- The negation of the sum of a list of offsets is equal to the sum of the negated items.
-prop_offset1 :: [GridOffset] -> Bool
+prop_offset1 :: [GridOffset] -> Expectation
 prop_offset1 offsets = sameOffset (offsetNegate $ mconcat offsets) (mconcat $ map offsetNegate offsets)
 
 -- A polar offset multiplied by a scalar is equal to an offset in the same direction with the length multiplied.
-prop_offset2 :: Distance -> Bearing -> Scalar -> Bool
+prop_offset2 :: Distance -> Bearing -> Scalar -> Expectation
 prop_offset2 (Distance d) (Bearing h) (Scalar s) = sameOffset go1 go2
    where
       go1 = offsetScale s $ polarOffset d h
       go2 = polarOffset (d * s) h
 
 -- | A polar offset has the offset distance and bearing of its arguments.
-prop_offset3 :: GridOffset -> Bool
+prop_offset3 :: GridOffset -> Expectation
 prop_offset3 delta = sameOffset delta0
                                 (polarOffset (offsetDistance delta0) (offsetBearing delta))
    where delta0 = delta {deltaAltitude = 0}
 
 -- | Given a grid point and an offset, applying the offset to the point gives a new point which
 -- is offset from the first point by the argument offset.
-prop_grid1 :: GridPoint (GridTM LocalEllipsoid) -> GridOffset -> Bool
+prop_grid1 :: GridPoint (GridTM LocalEllipsoid) -> GridOffset -> Expectation
 prop_grid1 p d = sameOffset d $ p `gridOffset` applyOffset d p
 
 -- | Check that using toGrid/fromGrid for TransverseMercator projection are inverses
 -- | for negative latitudes near the coordinates 0,0
-prop_tmGridInverse :: Bool
-prop_tmGridInverse = 
-   let origin = Geodetic 
+prop_tmGridInverse :: Expectation
+prop_tmGridInverse =
+   let origin = Geodetic
          { latitude = 0 * degree
          , longitude = 0 * degree
          , geoAlt = 0
@@ -224,12 +230,12 @@ prop_tmGridInverse =
        tp1 = toGrid g testPoint
        tp2 = fromGrid tp1
    in tp2 `closeEnough` testPoint
-   
+
 -- | Converting a UK grid reference to a GridPoint and back is a null operation.
-prop_ukGrid1 :: GridRef -> Bool
-prop_ukGrid1 (GridRef str) =
-   str ==
-   (fromJust $ toUkGridReference ((length str - 2) `div` 2) $ fst $ fromJust $ fromUkGridReference str)
+prop_ukGrid1 :: UkGridRef -> Expectation
+prop_ukGrid1 (UkGridRef str) =
+   str `shouldBe`
+   fromJust (toUkGridReference ((length str - 2) `div` 2) $ fst $ fromJust $ fromUkGridReference str)
 
 -- | UK Grid Reference points. The oracle for these points was the
 -- UK Grid Reference Finder (gridreferencefinder.com), retrieved on 26 Jan 2013.
@@ -250,35 +256,35 @@ ukSampleGrid = map convert [
    -- Caister and Framingham are taken from Ordnance Survey worked examples.
    where
       convert (grid, x, y, lat, long, desc) =
-         (grid, GridPoint (x) (y) (0) UkNationalGrid,
-          Geodetic (lat * degree) (long * degree) (0) WGS84, desc)
+         (grid, GridPoint x y 0 UkNationalGrid,
+          Geodetic (lat * degree) (long * degree) 0 WGS84, desc)
 
-type GridPointTest = (String, GridPoint UkNationalGrid, Geodetic WGS84, String) -> Test
+type UkGridPointTest = (String, GridPoint UkNationalGrid, Geodetic WGS84, String) -> SpecWith (Arg Expectation)
 
 -- | Check that grid reference to grid point works for sample points.
-ukGridTest2 :: GridPointTest
-ukGridTest2 (gridRef, gp, _, testName) = testCase testName $ HU.assertBool ""
-   $ (fst $ fromJust $ fromUkGridReference gridRef) == gp
+ukGridTest2 :: UkGridPointTest
+ukGridTest2 (gridRef, gp, _, testName) =
+   it testName $ fst (fromJust $ fromUkGridReference gridRef) `shouldBe` gp
 
 -- | Check that grid point to grid reference works for sample points.
-ukGridTest3 :: GridPointTest
-ukGridTest3 (gridRef, gp, _, testName) = testCase testName $ HU.assertBool ""
-   $ toUkGridReference 5 gp == Just gridRef
+ukGridTest3 :: UkGridPointTest
+ukGridTest3 (gridRef, gp, _, testName) =
+   it testName $ toUkGridReference 5 gp `shouldBe` Just gridRef
 
 -- | Check that grid point to WGS84 works close enough for sample points.
-ukGridTest4 :: GridPointTest
-ukGridTest4 (_, gp, geo, testName) = testCase testName $ HU.assertBool ""
-   $ closeEnough geo $ toWGS84 $ fromGrid gp
+ukGridTest4 :: UkGridPointTest
+ukGridTest4 (_, gp, geo, testName) =
+   it testName $ geo `closeEnough` toWGS84 (fromGrid gp)
 
 -- | Check that WGS84 to grid point works close enough for sample points.
-ukGridTest5 :: GridPointTest
-ukGridTest5 (_, gp, geo, testName) = testCase testName $ HU.assertBool ""
-   $ offsetDistance (gridOffset gp $ toGrid UkNationalGrid $ toLocal OSGB36 geo) < 1
+ukGridTest5 :: UkGridPointTest
+ukGridTest5 (_, gp, geo, testName) =
+   it testName $ gp `closeGrid` toGrid UkNationalGrid (toLocal OSGB36 geo)
 
 
 -- | Worked example for UK Geodetic to GridPoint, taken from "A Guide to Coordinate Systems in Great Britain" [1]
 ukTest :: Geodetic OSGB36
-ukTest = Geodetic (dms 52 39 27.2531) (dms 1 43 4.5177) (0) OSGB36
+ukTest = Geodetic (dms 52 39 27.2531) (dms 1 43 4.5177) 0 OSGB36
 
 {-
    v = 6.3885023333E+06
@@ -297,56 +303,103 @@ ukTest = Geodetic (dms 52 39 27.2531) (dms 1 43 4.5177) (0) OSGB36
 -}
 
 
+prop_utmGridTest1 :: UtmGridRef -> Expectation
+prop_utmGridTest1 (UtmGridRef str) =
+   str `shouldBe`
+   toUtmGridReference Nothing True 0 (fromRight (error str) $ fromUtmGridReference str)
+
+-- | Sample points for UTM, in both UTM and MGRS formats. The oracle for these points was the Montana
+-- State University converter. http://rcn.montana.edu/resources/Converter.aspx.
+-- Retrieved on 1st Feb 2025.
+utmSampleGrid :: [(String, String, GridPoint UtmZone, Geodetic WGS84, String)]
+utmSampleGrid = map convert [
+ -- UTM Reference,        MGRS Reference,       X,      Y,        Latitude,    Longitude,   Description  
+   ("30N 699304 5710208", "30U XC 99304 10208", 699304, 5710208,   51.5078064,  -0.1279388, "Nelson's Column"),
+   ("35S 379101 8017747", "35K LA 79101 17747", 379101, 8017747,  -17.9249501,  25.8585071, "Victoria Falls"),
+   ("27N 454366 7111715", "27W VM 54366 11715", 454366, 7111715,   64.1289075, -21.9373288, "Reykjavik Airport"),
+   ("32N 297697 6700532", "32V KN 97697 00532", 297697, 6700532,   60.3904298,   5.3284215, "Bergen")]
+   where
+      convert (utm, mgrs, x, y, lat, long, desc) =
+         (utm, mgrs, GridPoint x y 0 zone, geo, desc)
+         where
+            geo = Geodetic (lat * degree) (long * degree) 0 WGS84
+            znum = fromJust $ utmZoneNumber geo
+            hemi = if lat < 0 then UtmSouth else UtmNorth
+            zone = fromJust $ mkUtmZone hemi znum
+
+type UtmGridPointTest = (String, String, GridPoint UtmZone, Geodetic WGS84, String) -> SpecWith (Arg Expectation)
+
+
+-- | Check that UTM reference to grid point works for sample points.
+utmGridTest2 :: UtmGridPointTest
+utmGridTest2 (gridRef, _, gp, _, testName) =
+   it testName $ fromUtmGridReference gridRef `shouldBe` Right gp
+
+-- | Check that Grid point to UTM reference works for sample points.
+utmGridTest3 :: UtmGridPointTest
+utmGridTest3 (gridRef, _, gp, _, testName) =
+   it testName $ toUtmGridReference Nothing False 0 gp `shouldBe` gridRef
+
+-- | Check that grid point to WGS84 works close enough for sample points.
+utmGridTest4 :: UtmGridPointTest
+utmGridTest4 (_, _, gp, geo, testName) =
+   it testName $ geo `closeEnough` fromGrid gp
+
+-- | Check that WGS84 to grid point works close enough for sample points.
+utmGridTest5 :: UtmGridPointTest
+utmGridTest5 (_, _, gp, geo, testName) =
+   it testName $ gp `closeGrid` toGrid (fromJust $ utmZone geo) geo
+
 -- | Standard stereographic grid for point tests in the Northern Hemisphere.
 stereoGridN :: GridStereo LocalEllipsoid
-stereoGridN = mkGridStereo tangent origin (0.9999079)
+stereoGridN = mkGridStereo tangent origin 0.9999079
    where
-      ellipse = LocalEllipsoid "Bessel 1841" (6377397.155) (299.15281) mempty
-      tangent = Geodetic (dms 52 9 22.178) (dms 5 23 15.500) (0) ellipse
-      origin = GridOffset (155000) (463000) (0)
+      ellipse = LocalEllipsoid "Bessel 1841" 6377397.155 299.15281 mempty
+      tangent = Geodetic (dms 52 9 22.178) (dms 5 23 15.500) 0 ellipse
+      origin = GridOffset 155000 463000 0
 
 
 -- | Standard steregraphic grid for point tests in the Southern Hemisphere.
 --
 -- This is the same as stereoGridN but with the tangent latitude and the false origin northings negated.
 stereoGridS :: GridStereo LocalEllipsoid
-stereoGridS = mkGridStereo tangent origin (0.9999079)
+stereoGridS = mkGridStereo tangent origin 0.9999079
    where
-      ellipse = LocalEllipsoid "Bessel 1841" (6377397.155) (299.15281) mempty
-      tangent = Geodetic (negate $ dms 52 9 22.178) (dms 5 23 15.500) (0) ellipse
-      origin = GridOffset ((-155000)) (463000) (0)
+      ellipse = LocalEllipsoid "Bessel 1841" 6377397.155 299.15281 mempty
+      tangent = Geodetic (negate $ dms 52 9 22.178) (dms 5 23 15.500) 0 ellipse
+      origin = GridOffset (-155000) 463000 0
 
 
 -- | Data for the stereographic tests taken from
 -- <http://ftp.stu.edu.tw/BSD/NetBSD/pkgsrc/distfiles/epsg-6.11/G7-2.pdf>
-stereographicToGridN :: Bool
+stereographicToGridN :: Expectation
 stereographicToGridN = sameGrid g1 g1'
    where
-      p1 = Geodetic (dms 53 0 0) (dms 6 0 0) (0) $ gridEllipsoid stereoGridN
-      g1 = GridPoint (196105.283) (557057.739) (0) stereoGridN
+      p1 = Geodetic (dms 53 0 0) (dms 6 0 0) 0 $ gridEllipsoid stereoGridN
+      g1 = GridPoint 196105.283 557057.739 0 stereoGridN
       g1' = toGrid stereoGridN p1
 
-stereographicFromGridN :: Bool
+stereographicFromGridN :: Expectation
 stereographicFromGridN = samePlace p1 p1'
    where
-      p1 = Geodetic (dms 53 0 0) (dms 6 0 0) (0) $ gridEllipsoid stereoGridN
-      g1 = GridPoint (196105.283) (557057.739) (0) stereoGridN
+      p1 = Geodetic (dms 53 0 0) (dms 6 0 0) 0 $ gridEllipsoid stereoGridN
+      g1 = GridPoint 196105.283 557057.739 0 stereoGridN
       p1' = fromGrid g1
 
 
-stereographicToGridS :: Bool
+stereographicToGridS :: Expectation
 stereographicToGridS = sameGrid g1 g1'
    where
-      p1 = Geodetic (negate $ dms 53 0 0) (dms 6 0 0) (0) $ gridEllipsoid stereoGridS
-      g1 = GridPoint ((-196105.283)) (557057.739) (0) stereoGridS
+      p1 = Geodetic (negate $ dms 53 0 0) (dms 6 0 0) 0 $ gridEllipsoid stereoGridS
+      g1 = GridPoint (-196105.283) 557057.739 0 stereoGridS
       g1' = toGrid stereoGridS p1
 
 
-stereographicFromGridS :: Bool
+stereographicFromGridS :: Expectation
 stereographicFromGridS = samePlace p1 p1'
    where
-      p1 = Geodetic (negate $ dms 53 0 0) (dms 6 0 0) (0) $ gridEllipsoid stereoGridS
-      g1 = GridPoint ((-196105.283)) (557057.739) (0) stereoGridS
+      p1 = Geodetic (negate $ dms 53 0 0) (dms 6 0 0) 0 $ gridEllipsoid stereoGridS
+      g1 = GridPoint (-196105.283) 557057.739 0 stereoGridS
       p1' = fromGrid g1
 
 
@@ -363,7 +416,7 @@ prop_stereographic p =
 -- | A ray at distance zero returns its original arguments.
 prop_rayPath1 :: Ray WGS84 -> Bool
 prop_rayPath1 r@(Ray pt b e) =
-      samePlace pt pt1 && sameAngle b b1 && sameAngle e e1
+      samePlace' pt pt1 && sameAngle' b b1 && sameAngle' e e1
    where (pt1,b1,e1) = pathFunc (getRay r) 0
 
 
@@ -379,7 +432,7 @@ prop_pathContinuity :: (Ellipsoid e) =>
 prop_pathContinuity pf pt0 (Bearing b0) (Azimuth a0) (Distance d1) (Distance d2) =
    counterexample (show ((pt2, Bearing b2, Azimuth a2), (pt3, Bearing b3, Azimuth a3))) $
       pathValidAt path0 d1 && pathValidAt path0 d2 && pathValidAt path0 (d1+d2) ==>
-      closeEnough pt2 pt3 && sameAngle b2 b3 && sameAngle a2 a3
+      closeEnough' pt2 pt3 && sameAngle' b2 b3 && sameAngle' a2 a3
    where
       path0 = pf pt0 b0 a0
       (pt1, b1, a1) = pathFunc path0 d1
@@ -394,7 +447,7 @@ prop_pathContinuity1 :: (Ellipsoid e) => (Geodetic e -> Double -> Path e) -> Con
 prop_pathContinuity1 pf pt0 (Bearing b0) (Distance2 d1) (Distance2 d2) =
    counterexample (show ((pt2, Bearing b2), (pt3, Bearing b3))) $
       pathValidAt path0 d1 && pathValidAt path0 d2 && pathValidAt path0 (d1+d2) ==>
-      closeEnough pt2 pt3 && sameAngle b2 b3
+      closeEnough' pt2 pt3 && sameAngle' b2 b3
    where
       path0 = pf pt0 b0
       (pt1, b1, _) = pathFunc path0 d1
@@ -412,7 +465,7 @@ prop_rayContinuity = prop_pathContinuity rayPath
 -- This is a test of bisection rather than rays.
 prop_rayBisect :: Ray WGS84 -> Altitude -> Bool
 prop_rayBisect r (Altitude height) =
-   case bisect ray0 f (1e-2) (0) (1000 * kilometer) of
+   case bisect ray0 f 1e-2 0 (1000 * kilometer) of
       Nothing -> False
       Just d -> let (g, _, _) = pathFunc ray0 d in abs (altitude g - height) < 1e-2
    where
@@ -428,7 +481,7 @@ prop_rhumbContinuity = prop_pathContinuity1 rhumbPath
 -- | Two rhumb paths intersect at the same place.
 prop_rhumbIntersect :: RhumbPaths2 -> Property
 prop_rhumbIntersect rp =
-   case intersect 0 0 (0.1) 100 path1 path2 of
+   case intersect 0 0 0.1 100 path1 path2 of
       Just (d1, d2) ->
          let (pt1, _, _) = pathFunc path1 d1
              (pt2, _, _) = pathFunc path2 d2
@@ -436,3 +489,8 @@ prop_rhumbIntersect rp =
       Nothing -> label "No intersection" True
    where
       (path1, path2) = mk2RhumbPaths rp
+
+
+-- | Copied from `Test.Hspec.Expectations` source. It ought to be exported from there.
+expectTrue :: HasCallStack => String -> Bool -> Expectation
+expectTrue msg b = unless b (expectationFailure msg)
