@@ -4,7 +4,7 @@ version:        1.0.0
 build-type:     Simple
 author:         Paul Johnson <paul@cogito.org.uk>
 tested-with:    ghc ==9.6.6 ghc ==9.8.4 ghc ==9.10.1 ghc ==9.12.1
-data-files:
+extra-doc-files:
                 AddingProjections.txt,
                 LICENSE,
                 README.md,
@@ -38,8 +38,9 @@ library
   hs-source-dirs:  src
   build-depends:
                    base >= 4.17 && < 5,
-                   array,
-                   Stream
+                   array >= 0.1 && < 0.6,
+                   parsec,
+                   Stream >= 0.4.6 && < 0.5
   exposed-modules:
                    Geodetics.Altitude,
                    Geodetics.Ellipsoids,
@@ -49,7 +50,8 @@ library
                    Geodetics.Path,
                    Geodetics.Stereographic,
                    Geodetics.TransverseMercator,
-                   Geodetics.UK
+                   Geodetics.UK,
+                   Geodetics.UTM
   Default-Language: Haskell2010
   if flag(dev)
       ghc-options:
@@ -62,11 +64,9 @@ test-suite GeodeticTest
   x-uses-tf:       true
   build-depends:   geodetics,
                    base >= 4.6 && < 5,
-                   HUnit >= 1.2,
+                   hspec >= 2.11,
+                   HUnit >= 1.6,
                    QuickCheck >= 2.4,
-                   test-framework >= 0.4.1,
-                   test-framework-quickcheck2,
-                   test-framework-hunit,
                    checkers
   hs-source-dirs:
                    test
