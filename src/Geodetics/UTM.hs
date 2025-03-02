@@ -44,10 +44,8 @@ module Geodetics.UTM (
   toUtmGridReference,
   mgrsBandLetterToLatitude,
   mgrsLatitudeToBandLetter,
-  mgrsLetterToEasting,
-  mgrsEastingToLetter,
-  mgrsLetterToNorthings,
-  mgrsNorthingsToLetter
+  fromMgrsGridReference,
+  toMgrsGridReference
 ) where
 
 import Control.Monad (mplus, guard, void, when, unless)
@@ -62,7 +60,6 @@ import Text.Parsec
 import Text.Parsec.Error
 import Text.Printf
 import Text.Read
-import Debug.Trace
 
 
 
@@ -256,17 +253,18 @@ toUtmGridReference unit letters res gp =
       Just UtmKilometers -> printf "%.*fkm" (3-res) $ floorRes d / 1000
 
 
+
 -- | The MGRS latitude band code letters, excluding A and B used for Antarctica (south of -80 degrees)
 -- and Y and Z used for the Arctic (north of 84 degrees).
 mgrsBandLetters :: [Char]
 mgrsBandLetters = "CDEFGHJKLMNPQRSTUVWX"
 
 
--- | Find the southern boundary of a latitude band letter in degrees.
+-- | Find the southern boundary of a latitude band letter.
 mgrsBandLetterToLatitude :: Char -> Maybe Double
 mgrsBandLetterToLatitude band = do
     n1 <- ix band
-    return $ fromIntegral $ -80 + n1 * 8
+    return $ degree * fromIntegral (-80 + n1 * 8)
   where
     indexMap :: Array Char (Maybe Int)
     indexMap = accumArray mplus Nothing ('A', 'Z') [(c1, Just n) | (c1, n) <- zip mgrsBandLetters [0..]]
@@ -277,11 +275,12 @@ mgrsBandLetterToLatitude band = do
 -- (Argument in radians)
 mgrsLatitudeToBandLetter :: Double -> Maybe Char
 mgrsLatitudeToBandLetter lat = do
-    guard $ -80 <= ilat && ilat < 84
+    guard $ -80 <= dlat && dlat <= 84
     return $ indexMap ! latIdx
   where
+    dlat = lat / degree
     ilat :: Int
-    ilat = floor $ lat / degree
+    ilat = floor dlat
     latIdx = min 19 $ (ilat + 80) `div` 8  -- Band 19 (X) extends an extra 4 degrees.
     indexMap = listArray (0,19) mgrsBandLetters
 
@@ -313,12 +312,12 @@ mgrsLetterToEasting zn c = do
 mgrsEastingToLetter :: UtmZoneNumber -> Double -> Maybe Char
 mgrsEastingToLetter zn east = do
     guard $ 1 <= zn && zn <= 60
-    guard $ 100_000 <= east && east < 900_000
+    guard $ 100 * kilometer <= east && east < 900 * kilometer
     return $ indexMap ! ix
   where
     indexMap = listArray (0,23) mgrsEastingsLetters
     base = ((zn-1) `mod` 3) * 8
-    square = max 0 $ min 7 $ floor $ (east - 100_000)/100_000  -- Clamped in range (0,7).
+    square = max 0 $ min 7 $ floor $ (east - 100 * kilometer)/(100 * kilometer)  -- Clamped in range (0,7).
     ix = base + square  -- Must be in range (0,23)
 
 
@@ -338,27 +337,24 @@ mgrsNorthingsLetters = "ABCDEFGHJKLMNPQRSTUV"
 --
 -- This uses the latitude band to estimate the range of northings that would be valid there,
 -- and hence determine which possible grid band is meant by the northings letter.
+-- The algorithm used is approximate and deliberately very forgiving: it will accept some grid squares
+-- which are north or south of the band given.
 mgrsLetterToNorthings ::
   UtmZoneNumber
   -> Char  -- ^ Latitude band letter (@C@ - @X@ excluding @I@ and @O@).
   -> Char  -- ^ MGRS Northings letter (@A@ - @V@ excluding @I@ and @O@).
   -> Maybe Double
 mgrsLetterToNorthings zone bandC northingsC = do
-  band <- mgrsBandLetterToLatitude bandC
+  guard $ 1 <= zone && zone <= 60
+  band <- (/degree) <$> mgrsBandLetterToLatitude bandC
   northings0 <- (baseNorthingsOffset +) <$> ix northingsC
   let bandDist = band * metersPerDegree -- Approx dist from equator to southern edge of band.
-      bandGridLower = floor $ bandDist / 100_000 - 1  -- Lower limit of band in 100km units
+      bandGridLower = floor $ bandDist / 100_000 - 2  -- Lower limit of band in 100km units
       bandGridUpper = ceiling $ if band > 71 * degree  -- Upper limit of band in 100km units.
         then (bandDist + 12 * metersPerDegree) / 100_000 + 1  -- Band X.
-        else (bandDist + 8 * metersPerDegree) / 100_000 + 1  -- Other bands.
+        else (bandDist + 8 * metersPerDegree) / 100_000 + 2  -- Other bands.
       rep = (bandGridLower - northings0 - 1) `div` 20  -- Lower limit in 2,000,000km units.
       grid = (rep+1)*20 + northings0
-  traceM $ "northings0 = " <> show northings0
-  traceM $ "bandDist = " <> show bandDist
-  traceM $ "bandGridLower = " <> show bandGridLower
-  traceM $ "bandGridUpper = " <> show bandGridUpper
-  traceM $ "rep = " <> show rep
-  traceM $ "grid = " <> show grid
   guard $ grid >= bandGridLower
   guard $ grid <= bandGridUpper
   return $ fromIntegral $ grid * 100_000
@@ -374,11 +370,95 @@ mgrsLetterToNorthings zone bandC northingsC = do
 -- | Find the northings letter of the 100km square containing the given Northings.
 --
 -- The input is not range checked. It just assumes that the northings letters repeat forever.
-mgrsNorthingsToLetter :: UtmZoneNumber -> Double -> Char
-mgrsNorthingsToLetter zone northings1 =
+mgrsNorthingToLetter :: UtmZoneNumber -> Double -> Char
+mgrsNorthingToLetter zone northings1 =
   letters ! ((gridNum + baseNorthingsOffset) `mod` 20)
   where
     gridNum :: Int
-    gridNum = floor $ northings1 / 100_000
+    gridNum = floor $ northings1 / (100 * kilometer)
     baseNorthingsOffset = if odd zone then 0 else 5
     letters = listArray (0,19) mgrsNorthingsLetters
+
+
+-- | Convert an MGRS grid reference to a UTM @GridPoint@, if the reference is valid.
+-- E.g. \"30U XC 99304 10208\" is the grid reference for Nelson's Column in London.
+-- 
+-- If the input contains spaces then these are used to delimit the fields. Any or all spaces
+-- may be omitted. Multiple spaces are treated as a single space.
+--
+-- If the reference is valid this returns the position of the south-west corner of the
+-- nominated grid square and an offset to its centre. Altitude is set to zero.
+fromMgrsGridReference :: String -> Either [String] (GridPoint UtmZone, GridOffset)
+fromMgrsGridReference str = case parse mgrsP str str of
+    Left err -> Left $ filter (not . null) $ lines $ showErrorMessages
+      "or" "unknown parse error" "expecting" "unexpected" "end of input"
+      (errorMessages err)
+    Right r -> Right r
+  where
+    mgrsP = do
+      zoneNum <- read <$> many1 digit  -- Safe because we can only read digits here.
+      spaces
+      band <- upper <?> "latitude band letter"
+      let (hemi, falseNorthing) = if band >= 'N'
+            then (UtmNorth, 0)
+            else (UtmSouth, -10_000_000)
+      zone <- maybe (fail "Invalid zone") return $ mkUtmZone hemi zoneNum
+      spaces
+      squareEast <- upper <?> "eastings letter"
+      eastingBase <- maybe (fail "Invalid eastings letter") return $
+        mgrsLetterToEasting zoneNum squareEast
+      spaces
+      squareNorth <- upper <?> "northings letter"
+      northingBase <- maybe (fail "Invalid northings letter") return $
+        mgrsLetterToNorthings zoneNum band squareNorth
+      spaces
+      (eastingChars, northingChars) <- try spaced <|> try unspaced <|> noDigits
+      when (length eastingChars /= length northingChars) $
+        fail "Northings and Eastings must be the same length."
+      if northingChars == "" && eastingChars == ""
+        then -- No digits, just return the outer 100km grid square
+          return (GridPoint eastingBase (northingBase - falseNorthing) 0 zone,
+                  GridOffset (100 * kilometer / 2) (100 * kilometer / 2) 0)
+        else do
+          (northing, offset) <- maybe (fail "Invalid northing digits") return $
+            fromGridDigits (100 * kilometer) northingChars
+          (easting, _) <- maybe (fail "Invalid easting digits") return $
+            fromGridDigits (100 * kilometer) eastingChars
+          return (GridPoint (eastingBase + easting) (northingBase + northing - falseNorthing) 0 zone,
+                  GridOffset (offset/2) (offset/2) 0)
+    spaced = do
+      e <- many1 digit
+      skipMany1 space  -- A space is mandatory here.
+      n <- many1 digit
+      return (e,n)
+    unspaced = do
+      digits <- many1 digit
+      let c = length digits
+      when (odd c) $ fail "Northings and Eastings must be the same length."
+      return (splitAt (c `div` 2) digits)
+    noDigits = do
+      eof
+      return ("", "")
+
+-- | Convert UTM @GridPoint@ to an MGRS grid reference.
+toMgrsGridReference ::
+  Bool  -- ^ Include spaces in the output. The standard says no spaces, but they make 
+        -- the output easier to read.
+  -> Int  -- ^ Number of digits of precision in the easting and northing. Must be 0-5.
+  -> GridPoint UtmZone
+  -> Maybe String
+toMgrsGridReference withSpaces precision gp = do
+  guard $ precision >= 0 && precision <= 5
+  band <- mgrsLatitudeToBandLetter $ latitude $ fromGrid gp
+  let
+    zoneNum = utmZoneNum $ gridBasis gp
+    northLetter = mgrsNorthingToLetter zoneNum $ northings gp
+  eastLetter <- mgrsEastingToLetter zoneNum $ eastings gp
+  (_, northDigits) <- toGridDigits (100 * kilometer) precision $ northings gp
+  (_, eastDigits) <- toGridDigits (100 * kilometer) precision $ eastings gp
+  let part1 = printf "%02d" zoneNum <> [band]
+      part2 = [eastLetter, northLetter]
+  return $ if withSpaces
+    then part1 <> " " <> part2 <> " " <> eastDigits <> " " <> northDigits
+    else part1 <> part2 <> eastDigits <> northDigits
+
