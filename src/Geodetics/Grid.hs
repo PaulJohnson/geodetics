@@ -152,8 +152,9 @@ fromGridDigits sq ds = if all isDigit ds then Just (d, p) else Nothing
       p = sq / fromIntegral ((10 :: Integer) ^ n)
 
 -- | Convert a distance into a digit string suitable for printing as part
--- of a grid reference. The result is the nearest position to the specified
--- number of digits, expressed as an integer count of squares and a string of digits.
+-- of a grid reference. The result is the south or west side of the enclosing grid square,
+-- where the size of the square is defined by the number of digits.
+-- The result is expressed as an integer count of squares and a string of digits.
 -- If any arguments are invalid then @Nothing@ is returned.
 toGridDigits ::
    Double           -- ^ Size of enclosing grid square. Must be at least 1000m.
@@ -170,7 +171,7 @@ toGridDigits sq n d =
       p = 10 ^ n
       unit :: Double
       unit = sq / fromIntegral p
-      u = round (d / unit)
+      u = floor (d / unit)
       (sqs, d1) = u `divMod` p
       s = show d1
       pad = if n == 0 then "" else replicate (n - length s) '0' ++ s
