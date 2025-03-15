@@ -1,6 +1,6 @@
 cabal-version:  3.0
 name:           geodetics
-version:        1.0.0
+version:        1.1.0
 build-type:     Simple
 author:         Paul Johnson <paul@cogito.org.uk>
 tested-with:    ghc ==9.6.6 ghc ==9.8.4 ghc ==9.10.1 ghc ==9.12.1
@@ -11,19 +11,18 @@ extra-doc-files:
                 changelog.md,
                 ToDo.txt
 license:        BSD-3-Clause
-copyright:      Paul Johnson 2018,2024
+copyright:      Paul Johnson 2018, 2025
 synopsis:       Terrestrial coordinate systems and geodetic calculations.
 description:    Precise geographical coordinates (latitude & longitude), with conversion between
                 different reference frames and projections.
                 
                 Certain distinguished reference frames and grids are given distinct
                 types so that coordinates expressed within them cannot be confused with
-                from coordinates in other frames.
+                coordinates in other frames.
 license-file:   LICENSE
 maintainer:     Paul Johnson <paul@cogito.org.uk>
 homepage:       https://github.com/PaulJohnson/geodetics
 category:       Geography
-tested-with:    GHC==9.10.1
 
 source-repository head
   type:     git

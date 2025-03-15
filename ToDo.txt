@@ -1,6 +1,6 @@
 To Do
 =====
 
-* Add UTM and Universal Polar grids.
+* Add Universal Polar grid.
 
 * Add more national grid systems.

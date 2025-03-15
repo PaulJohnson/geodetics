@@ -21,13 +21,21 @@ Version 0.1.1: Fixed bug #15: for a point p, groundDistance p p returned NaN
 Version 0.1.2: Fixed bugs #16 and #17: Unicode PRIME and DOUBLE PRIME now allowed in
    position strings, and the degree symbol is allowed for decimal degrees.
 
-Version 1.0.0: Removed dependency on Dimensional library. This is a breaking change:
-   hence the major version bump. Also fixed bug #18 (and #19).
+## Version 1.0.0
+
+* Removed dependency on Dimensional library. This is a breaking change:
+   hence the major version bump.
+
+* Fixed bug #18 (and #19).
 
 ## Version 1.1.0
 
 * Dropped a redundant `Ellipsoid` constraint on `antipode`.
+
 * Added functions `showGeodeticLatLong`, `showGeodeticSignedDecimal`,
   `showGeodeticNSEWDecimal`, and `showGeodeticDDDMMSS`.
+
 * Fixed a few minor bugs in the `readGroundPosition` and the
   `Geodetics.LatLongParser`.
+
+* Added Universal Transverse Mercator (UTM) grid, with both UTM and MGRS grid references

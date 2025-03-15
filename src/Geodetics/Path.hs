@@ -209,7 +209,7 @@ rayPath pt1 bearing elevation = Path ray alwaysValid
 -- polar singularities are not included. Anyone using a rhumb line that close to a pole
 -- must be going round the twist anyway.
 --
--- Based on *Practical Sailing Formulas for Rhumb-Line Tracks on an Oblate Earth* 
+-- Based on /Practical Sailing Formulas for Rhumb-Line Tracks on an Oblate Earth/
 -- by G.H. Kaplan, U.S. Naval Observatory. Except for points close to the poles 
 -- the approximation is accurate to within a few meters over 1000km.
 rhumbPath :: (Ellipsoid e) =>
