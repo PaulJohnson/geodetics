@@ -5,10 +5,12 @@
 module Main where
 
 import Control.Monad
+import Data.Char
 import Data.Either
 import Data.Maybe
 import Test.Hspec
 import Test.Hspec.QuickCheck
+import Test.HUnit (assertFailure)
 import Test.QuickCheck
 import Test.QuickCheck.Checkers (EqProp, eq, (=-=), unbatch)
 import Test.QuickCheck.Classes (monoid)
@@ -51,6 +53,11 @@ main = hspec $ do
       describe "UTM Grid 3" $ mapM_ utmGridTest3 utmSampleGrid
       describe "UTM Grid 4" $ mapM_ utmGridTest4 utmSampleGrid
       describe "UTM Grid 5" $ mapM_ utmGridTest5 utmSampleGrid
+   describe "MGRS" $ do
+      prop "MGRS Grid 1" prop_mgrs_gridTest1
+      prop "MGRS Grid 2" prop_mgrs_gridTest2
+      describe "MGRS Grid 3" $ mapM_ mgrsGridTest3 utmSampleGrid
+      describe "MGRS Grid 4" $ mapM_ mgrsGridTest4 utmSampleGrid
    describe "Stereographic" $ do
       it "toGrid north" stereographicToGridN
       it "fromGrid north" stereographicFromGridN
@@ -303,6 +310,7 @@ ukTest = Geodetic (dms 52 39 27.2531) (dms 1 43 4.5177) 0 OSGB36
 -}
 
 
+-- | Check that a UTM grid reference round-trips to a gridpoint and back.
 prop_utmGridTest1 :: UtmGridRef -> Expectation
 prop_utmGridTest1 (UtmGridRef str) =
    str `shouldBe`
@@ -349,6 +357,35 @@ utmGridTest4 (_, _, gp, geo, testName) =
 utmGridTest5 :: UtmGridPointTest
 utmGridTest5 (_, _, gp, geo, testName) =
    it testName $ gp `closeGrid` toGrid (fromJust $ utmZone geo) geo
+
+
+-- | Check that a UTM grid point round-trips to MGRS and back, with spaces.
+prop_mgrs_gridTest1 :: UtmGridRef -> Expectation
+prop_mgrs_gridTest1 (UtmGridRef str) =
+   case fromUtmGridReference str of
+      Left msg -> assertFailure $ "gridTest1 bogus UTM ref: " <> str <> ". Messages = " <> show msg
+      Right gp ->
+         fromMgrsGridReference <$> toMgrsGridReference True 5 gp `shouldBe` Just (Right (gp, GridOffset 0.5 0.5 0))
+
+-- | Check that a UTM grid point round-trips to MGRS and back, without spaces.
+prop_mgrs_gridTest2 :: UtmGridRef -> Expectation
+prop_mgrs_gridTest2 (UtmGridRef str) =
+   case fromUtmGridReference str of
+      Left msg -> assertFailure $ "gridTest2 bogus UTM ref: " <> str <> ". Messages = " <> show msg
+      Right gp ->
+         fromMgrsGridReference <$> toMgrsGridReference False 5 gp `shouldBe` Just (Right (gp, GridOffset 0.5 0.5 0))
+
+-- | Check that MGRS reference to grid point works for sample points.
+mgrsGridTest3 :: UtmGridPointTest
+mgrsGridTest3 (_, mgrs, gp, _, testName) =
+   it testName $ fromMgrsGridReference mgrs `shouldBe` Right (gp, GridOffset 0.5 0.5 0)
+
+-- | Check that grid point to MGRS reference works for sample points.
+mgrsGridTest4 :: UtmGridPointTest
+mgrsGridTest4 (_, mgrs, gp, _, testName) = do
+   it (testName <> " with spaces") $ toMgrsGridReference True 5 gp `shouldBe` Just mgrs
+   it (testName <> " without spaces") $ toMgrsGridReference False 5 gp `shouldBe` Just (filter (not . isSpace) mgrs)
+
 
 -- | Standard stereographic grid for point tests in the Northern Hemisphere.
 stereoGridN :: GridStereo LocalEllipsoid

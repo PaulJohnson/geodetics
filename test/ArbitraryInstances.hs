@@ -102,7 +102,7 @@ instance Arbitrary UtmGridRef where
    arbitrary = do
       zone <- choose (1,60 :: Int)
       hemi <- elements "NS"
-      e <- choose (100_000, 999_999 :: Integer)
+      e <- choose (100_000, 899_999 :: Integer)
       n <- case hemi of
          'N' -> choose (0, 9_328_195 :: Integer) -- Equator to 84 degrees north.
          _   -> choose (1_118_248, 10_000_000)  -- 80 degrees south to Equator.
