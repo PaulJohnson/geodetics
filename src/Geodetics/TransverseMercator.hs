@@ -15,6 +15,9 @@ import qualified Data.Stream as Stream
 -- a sheet curved around the ellipsoid so that it touches it at one north-south line (hence making it part of
 -- a slightly elliptical cylinder).
 --
+-- Arguments passed to `toGrid` *must* use the same ellipsoid as the `trueOrigin`. The type system
+-- cannot verify this for 'LocalEllipsoid'.
+--
 -- The calculations here are based on \"Transverse Mercator Projection: Constants, Formulae and Methods\"
 -- by the Ordnance Survey, March 1983.
 -- Retrieved from http://www.threelittlemaids.co.uk/magdec/transverse_mercator_projection.pdf
@@ -22,14 +25,14 @@ data GridTM e = GridTM {
    trueOrigin :: Geodetic e,
       -- ^ A point on the line where the projection touches the ellipsoid (altitude is ignored).
    falseOrigin :: GridOffset,
-      -- ^ The grid position of the true origin. Used to avoid negative coordinates over
+      -- ^ The negation of the grid position of the true origin. Used to avoid negative coordinates over
       -- the area of interest. The altitude gives a vertical offset from the ellipsoid.
    gridScale :: Double,
       -- ^ A scaling factor that balances the distortion between the east & west edges and the middle
       -- of the projection.
 
    -- Remaining elements are memoised parameters computed from the ellipsoid underlying the true origin.
-   gridN1, gridN2, gridN3, gridN4 :: Double
+   gridN1, gridN2, gridN3, gridN4 :: !Double
 } deriving (Show)
 
 

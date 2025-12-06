@@ -26,6 +26,7 @@ import Geodetics.TransverseMercator
 import Geodetics.UK
 import Geodetics.UTM
 import LatLongParser (parserTests)
+import Geodetics.PolarStereographic
 
 main :: IO ()
 main = hspec $ do
@@ -58,6 +59,9 @@ main = hspec $ do
       prop "MGRS Grid 2" prop_mgrs_gridTest2
       describe "MGRS Grid 3" $ mapM_ mgrsGridTest3 utmSampleGrid
       describe "MGRS Grid 4" $ mapM_ mgrsGridTest4 utmSampleGrid
+   describe "UPS" $ do
+      describe "UPS Grid 4" $ mapM_ upsGridTest4 upsSampleGrid
+      describe "UPS Grid 5" $ mapM_ upsGridTest5 upsSampleGrid
    describe "Stereographic" $ do
       it "toGrid north" stereographicToGridN
       it "fromGrid north" stereographicFromGridN
@@ -390,6 +394,36 @@ mgrsGridTest4 :: UtmGridPointTest
 mgrsGridTest4 (_, mgrs, gp, _, testName) = do
    it (testName <> " with spaces") $ toMgrsGridReference True 5 gp `shouldBe` Just mgrs
    it (testName <> " without spaces") $ toMgrsGridReference False 5 gp `shouldBe` Just (filter (not . isSpace) mgrs)
+
+
+-- | DMA TM 8358.2 can be found at https://apps.dtic.mil/sti/tr/pdf/ADA266497.pdf
+upsSampleGrid :: [(GridPoint (PolarStereographic WGS84), Geodetic WGS84, String)]
+upsSampleGrid = map convert [
+    -- X,          Y,          Latitude,    Longitude
+      (1530125.78, 2426773.60,  84.28723389, -132.2479892, "DMA TM 8358.2 sample 1"),
+      (3320416.75,  632668.43,  73.0       ,   44.0      , "DMA TM 8358.2 sample 2"),
+      (2222979.47, 1797474.90, -87.28733333,  132.2478619, "DMA TM 8358.2 sample 3") ]
+   where
+      convert (x, y, lat, long, desc) = (GridPoint { eastings = x, northings = y, altGP = 0, gridBasis = gb }, geo, desc)
+         where
+            geo = Geodetic { latitude = (lat * degree), longitude = (long * degree), geoAlt = 0, ellipsoid = WGS84 }
+            gb = mkGridPolarStereographic
+               (if lat < 0 then SouthPole else NorthPole)
+               WGS84
+               (GridOffset { deltaEast = -(2000 * kilometer), deltaNorth = -(2000 * kilometer), deltaAltitude = 0 })
+               0.994
+
+type UpsGridPointTest = (GridPoint (PolarStereographic WGS84), Geodetic WGS84, String) -> SpecWith (Arg Expectation)
+
+-- | Check that the UPS grid point to WGS84 works close enough for sample points.
+upsGridTest4 :: UpsGridPointTest
+upsGridTest4 (gp, geo, testName) =
+   it testName $ geo `closeEnough` fromGrid gp
+
+-- | Check that WGS84 to UPS grid point works close enough for sample points.
+upsGridTest5 :: UpsGridPointTest
+upsGridTest5 (gp, geo, testName) =
+   it testName $ gp `closeGrid` toGrid (gridBasis gp) geo
 
 
 -- | Standard stereographic grid for point tests in the Northern Hemisphere.

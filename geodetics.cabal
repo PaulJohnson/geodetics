@@ -38,7 +38,7 @@ library
   build-depends:
                    base >= 4.17 && < 5,
                    array >= 0.1 && < 0.6,
-                   parsec,
+                   parsec >= 3.1 && < 3.2,
                    Stream >= 0.4.6 && < 0.5
   exposed-modules:
                    Geodetics.Altitude,
@@ -47,6 +47,7 @@ library
                    Geodetics.Grid,
                    Geodetics.LatLongParser,
                    Geodetics.Path,
+                   Geodetics.PolarStereographic,
                    Geodetics.Stereographic,
                    Geodetics.TransverseMercator,
                    Geodetics.UK,

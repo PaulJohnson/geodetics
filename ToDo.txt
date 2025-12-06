@@ -1,6 +1,8 @@
 To Do
 =====
 
-* Add Universal Polar grid.
+* Include polar grid in the UTM and MGRS grid reference systems.
 
-* Add more national grid systems.
+* More national grid systems.
+
+* Great-circle paths.
