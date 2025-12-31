@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant bracket" #-}
+{-# LANGUAGE ViewPatterns #-}
 
 module Main where
 
@@ -20,13 +21,14 @@ import Geodetics.Altitude
 import Geodetics.Ellipsoids
 import Geodetics.Geodetic
 import Geodetics.Grid
+import Geodetics.MGRS
 import Geodetics.Path
 import Geodetics.Stereographic
 import Geodetics.TransverseMercator
 import Geodetics.UK
 import Geodetics.UTM
 import LatLongParser (parserTests)
-import Geodetics.PolarStereographic
+import Geodetics.PolarStereographic as PS
 
 main :: IO ()
 main = hspec $ do
@@ -62,6 +64,9 @@ main = hspec $ do
    describe "UPS" $ do
       describe "UPS Grid 4" $ mapM_ upsGridTest4 upsSampleGrid
       describe "UPS Grid 5" $ mapM_ upsGridTest5 upsSampleGrid
+      describe "UPS Grid 6" $ mapM_ upsGridTest6 upsSampleGrid
+      describe "UPS Grid 7" $ mapM_ upsGridTest7 upsSampleGrid
+      describe "UPS Grid 8" $ mapM_ upsGridTest8 upsSampleGrid
    describe "Stereographic" $ do
       it "toGrid north" stereographicToGridN
       it "fromGrid north" stereographicFromGridN
@@ -373,7 +378,7 @@ prop_mgrs_gridTest1 :: UtmGridRef -> Expectation
 prop_mgrs_gridTest1 (UtmGridRef str) =
    case fromUtmGridReference str of
       Left msg -> assertFailure $ "gridTest1 bogus UTM ref: " <> str <> ". Messages = " <> show msg
-      Right gp ->
+      Right (utmToMgrsPoint -> gp) ->
          fromMgrsGridReference <$> toMgrsGridReference True 5 gp `shouldBe` Just (Right (gp, GridOffset 0.5 0.5 0))
 
 -- | Check that a UTM grid point round-trips to MGRS and back, without spaces.
@@ -381,30 +386,37 @@ prop_mgrs_gridTest2 :: UtmGridRef -> Expectation
 prop_mgrs_gridTest2 (UtmGridRef str) =
    case fromUtmGridReference str of
       Left msg -> assertFailure $ "gridTest2 bogus UTM ref: " <> str <> ". Messages = " <> show msg
-      Right gp ->
+      Right (utmToMgrsPoint -> gp) ->
          fromMgrsGridReference <$> toMgrsGridReference False 5 gp `shouldBe` Just (Right (gp, GridOffset 0.5 0.5 0))
 
 -- | Check that MGRS reference to grid point works for sample points.
 mgrsGridTest3 :: UtmGridPointTest
-mgrsGridTest3 (_, mgrs, gp, _, testName) =
+mgrsGridTest3 (_, mgrs, (utmToMgrsPoint -> gp), _, testName) =
    it testName $ fromMgrsGridReference mgrs `shouldBe` Right (gp, GridOffset 0.5 0.5 0)
 
 -- | Check that grid point to MGRS reference works for sample points.
 mgrsGridTest4 :: UtmGridPointTest
-mgrsGridTest4 (_, mgrs, gp, _, testName) = do
+mgrsGridTest4 (_, mgrs, (utmToMgrsPoint -> gp), _, testName) = do
    it (testName <> " with spaces") $ toMgrsGridReference True 5 gp `shouldBe` Just mgrs
    it (testName <> " without spaces") $ toMgrsGridReference False 5 gp `shouldBe` Just (filter (not . isSpace) mgrs)
 
 
 -- | DMA TM 8358.2 can be found at https://apps.dtic.mil/sti/tr/pdf/ADA266497.pdf
-upsSampleGrid :: [(GridPoint (PolarStereographic WGS84), Geodetic WGS84, String)]
+-- Oracle for other points is https://geographiclib.sourceforge.io/C++/doc/GeoConvert.1.html
+upsSampleGrid :: [(String, String, GridPoint (PolarStereographic WGS84), Geodetic WGS84, String)]
 upsSampleGrid = map convert [
-    -- X,          Y,          Latitude,    Longitude
-      (1530125.78, 2426773.60,  84.28723389, -132.2479892, "DMA TM 8358.2 sample 1"),
-      (3320416.75,  632668.43,  73.0       ,   44.0      , "DMA TM 8358.2 sample 2"),
-      (2222979.47, 1797474.90, -87.28733333,  132.2478619, "DMA TM 8358.2 sample 3") ]
+    -- MGRS             UPS,               X,          Y,           Latitude,    Longitude
+      ("ZAH0000000000", "2000000 2000000", 2000000.00, 2000000.00,  90,             0,         "North pole"),
+      ("BAN0000000000", "2000000 2000000", 2000000.00, 2000000.00, -90,             0,         "South pole"),
+      ("ZAE0000077930", "2000000 1777930", 2000000.00, 1777930.73,  88,             0,         "88N 0W"),
+      ("YXH7793000000", "1777930 2000000", 1777930.73, 2000000.00,  88,           -90,         "88N, 90W"),
+      ("BAQ0000022069", "2000000 2222069", 2000000.00, 2222069.27, -88,             0,         "88S 0W"),
+      ("AXN7793000000", "1777930 2000000", 1777930.73, 2000000.00, -88,           -90,         "88S, 90W"),
+      ("YTM3012526773", "1530125 2426773", 1530125.78, 2426773.60,  84.28723389, -132.2479892, "DMA TM 8358.2 sample 1"),
+      ("BCK2297997474", "2222979 1797474", 2222979.47, 1797474.90, -87.28733333,  132.2478619, "DMA TM 8358.2 sample 3") ]
+      -- DMA TM 8358.2 sample 2 is outside the UPS grid regions and is therefore not a valid test.
    where
-      convert (x, y, lat, long, desc) = (GridPoint { eastings = x, northings = y, altGP = 0, gridBasis = gb }, geo, desc)
+      convert (mgrs, ups, x, y, lat, long, desc) = (mgrs, ups, GridPoint { eastings = x, northings = y, altGP = 0, gridBasis = gb }, geo, desc)
          where
             geo = Geodetic { latitude = (lat * degree), longitude = (long * degree), geoAlt = 0, ellipsoid = WGS84 }
             gb = mkGridPolarStereographic
@@ -413,17 +425,34 @@ upsSampleGrid = map convert [
                (GridOffset { deltaEast = -(2000 * kilometer), deltaNorth = -(2000 * kilometer), deltaAltitude = 0 })
                0.994
 
-type UpsGridPointTest = (GridPoint (PolarStereographic WGS84), Geodetic WGS84, String) -> SpecWith (Arg Expectation)
+type UpsGridPointTest = (String, String, GridPoint (PolarStereographic WGS84), Geodetic WGS84, String) -> SpecWith (Arg Expectation)
 
 -- | Check that the UPS grid point to WGS84 works close enough for sample points.
 upsGridTest4 :: UpsGridPointTest
-upsGridTest4 (gp, geo, testName) =
+upsGridTest4 (_, _, gp, geo, testName) =
    it testName $ geo `closeEnough` fromGrid gp
 
 -- | Check that WGS84 to UPS grid point works close enough for sample points.
 upsGridTest5 :: UpsGridPointTest
-upsGridTest5 (gp, geo, testName) =
+upsGridTest5 (_, _, gp, geo, testName) =
    it testName $ gp `closeGrid` toGrid (gridBasis gp) geo
+
+-- | Check that UPS and MGRS parsers agree.
+upsGridTest6 :: UpsGridPointTest
+upsGridTest6 (mgrs, ups, gp, _, testName) =
+   it testName $
+         fst <$> fromMgrsGridReference mgrs `shouldBe`
+         upsToMgrsPoint <$> fromUpsGridReference (PS.trueOrigin $ gridBasis gp) ups
+
+-- | Check MGRS grid generator
+upsGridTest7 :: UpsGridPointTest
+upsGridTest7 (mgrs, _, gp, _, testName) =
+   it testName $ toMgrsGridReference False 5 (upsToMgrsPoint gp) `shouldBe` Just mgrs
+
+-- | Check UPS grid generator
+upsGridTest8 :: UpsGridPointTest
+upsGridTest8 (_, ups, gp, _, testName) =
+   it testName $ toUpsGridReference Nothing False 0 gp `shouldBe` ups
 
 
 -- | Standard stereographic grid for point tests in the Northern Hemisphere.

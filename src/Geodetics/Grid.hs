@@ -18,7 +18,8 @@ module Geodetics.Grid (
    unsafeGridCoerce,
    -- * Utility functions for grid references
    fromGridDigits,
-   toGridDigits
+   toGridDigits,
+   GridUnit (..)
 ) where
 
 import Data.Char
@@ -67,11 +68,12 @@ instance Monoid GridOffset where
    mempty = GridOffset 0 0 0
    mappend = (<>)
 
+
 -- | An offset defined by a distance (m) and a bearing (radians) to the right of North.
 --
 -- There is no elevation parameter because we are using a plane to approximate an ellipsoid,
 -- so elevation would not provide a useful result.  If you want to work with elevations
--- then "rayPath" will give meaningful results.
+-- then 'Geodetics.Path.rayPath' will give meaningful results.
 polarOffset :: Double -> Double -> GridOffset
 polarOffset r d = GridOffset (r * sin d) (r * cos d) 0
 
@@ -124,11 +126,10 @@ gridOffset p1 p2 = GridOffset (eastings p2 - eastings p1)
 -- but with the same easting, northing and altitude. This is unsafe because it
 -- will produce a different position unless the two grids are actually equal.
 --
--- It should be used only to convert between distinguished grids (e.g. "UkNationalGrid") and
--- their equivalent numerical definitions.
+-- This function should be used only to convert between distinguished grids
+-- (e.g. "UkNationalGrid") and their equivalent numerical definitions.
 unsafeGridCoerce :: b -> GridPoint a -> GridPoint b
 unsafeGridCoerce base p = GridPoint (eastings p) (northings p) (altitude p) base
-
 
 
 -- | Convert a list of digits to a distance. The first argument is the size of the
@@ -136,9 +137,10 @@ unsafeGridCoerce base p = GridPoint (eastings p) (northings p) (altitude p) base
 -- in units of one tenth of the grid square, the second one hundredth, and so on.
 -- The first result is the lower limit of the result, and the second is the size
 -- of the specified offset.
--- So for instance @fromGridDigits (100 * kilometer) "237"@ will return
 --
--- > Just (23700 meters, 100 meters)
+-- For instance @fromGridDigits (100 * kilometer) "237"@ will return
+--
+-- > Just (23700, 100)
 --
 -- If there are any non-digits in the string then the function returns @Nothing@.
 fromGridDigits :: Double -> String -> Maybe (Double, Double)
@@ -150,6 +152,7 @@ fromGridDigits sq ds = if all isDigit ds then Just (d, p) else Nothing
          (map (fromIntegral . digitToInt) ds)
          (drop 1 $ iterate (/ 10) sq)
       p = sq / fromIntegral ((10 :: Integer) ^ n)
+
 
 -- | Convert a distance into a digit string suitable for printing as part
 -- of a grid reference. The result is the south or west side of the enclosing grid square,
@@ -175,3 +178,11 @@ toGridDigits sq n d =
       (sqs, d1) = u `divMod` p
       s = show d1
       pad = if n == 0 then "" else replicate (n - length s) '0' ++ s
+
+
+-- | Some grids (notably UTM and UPS) can have optional units in their grid references.
+data GridUnit = GridMeters | GridKilometers deriving Eq
+
+instance Show GridUnit where
+   show GridMeters = "m"
+   show GridKilometers = "km"

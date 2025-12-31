@@ -46,6 +46,7 @@ library
                    Geodetics.Geodetic,
                    Geodetics.Grid,
                    Geodetics.LatLongParser,
+                   Geodetics.MGRS,
                    Geodetics.Path,
                    Geodetics.PolarStereographic,
                    Geodetics.Stereographic,
