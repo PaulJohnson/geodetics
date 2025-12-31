@@ -39,3 +39,17 @@ Version 0.1.2: Fixed bugs #16 and #17: Unicode PRIME and DOUBLE PRIME now allowe
   `Geodetics.LatLongParser`.
 
 * Added Universal Transverse Mercator (UTM) grid, with both UTM and MGRS grid references
+
+## Version 2.0.0
+
+This version has breaking changes relative to version 1.1.0.
+
+* Added PolarStereographic projection with UPS grid
+
+* Moved MGRS grid types and functions to its own module and extended it to include UPS gridpoints.
+
+* Replaced the UtmGridUnit type with a more general GridUnit type in Geodetics.Grid.
+
+* Provided standalone Parsec parsers for MGRS and UTM grid references.
+
+* Modified code formatting to have consistently 2 spaces per indent level.
