@@ -11,9 +11,9 @@ transformed into another. Given two points in the same TRF you can find the shor
 between them and the bearing from one to the other.
 
 Once you have a geodetic position defined you can project it onto a flat plane, or Grid.
-At present Transverse Mercator and Oblique Stereographic grids are provided. More can be
-added by defining new instances of the Grid typeclass: see "AddingProjections.txt" for
-detais.
+At present Transverse Mercator, Polar Stereographic and Oblique Stereographic grids are
+provided. More can be added by defining new instances of the Grid typeclass: see
+"AddingProjections.txt" for detais.
 
 The Paths module defines a path as a parametric function of distance that returns a
 position and a bearing. Given two paths you can find their intersection using a fast
