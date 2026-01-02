@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeOperators, TypeFamilies, FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies, FlexibleContexts #-}
 -- | The implementation assumes IEEE 754 arithmetic.
 
 module Geodetics.Path where
@@ -26,7 +26,7 @@ data Path e = Path {
          -- ^ Takes a length and returns a position, and direction as heading and elevation angles.
       pathValidity :: PathValidity
    }
-   
+
 -- | Convenience value for paths that are valid for all distances.
 alwaysValid :: PathValidity
 alwaysValid = (negate inf, inf) where
@@ -46,8 +46,8 @@ pathValidAt path d = d > x1 && d < x2
 -- 
 -- The initial bounds must return one GT or EQ value and one LT or EQ value. If they
 -- do not then @Nothing@ is returned.
-bisect :: 
-   Path e 
+bisect ::
+   Path e
    -> (Geodetic e -> Ordering)        -- ^ Evaluation function.
    -> Double                          -- ^ Required accuracy in terms of distance along the path.
    -> Double -> Double                -- ^ Initial bounds.
@@ -59,7 +59,7 @@ bisect path f t b1 b2 = do
       guard $ hasRoot r
       bisect1 $ sortPair r
    where
-      f' d = let (p, _, _) = pathFunc path d in f p 
+      f' d = let (p, _, _) = pathFunc path d in f p
       pairResults d1 d2 = ((d1, f' d1), (d2, f' d2))
       hasRoot (v1, v2) = snd v1 <= EQ && EQ <= snd v2
       sortPair (v1, v2) = if snd v1 <= snd v2 then (v1, v2) else (v2, v1)
@@ -68,7 +68,7 @@ bisect path f t b1 b2 = do
              r3 = f' d3
              c1 = ((d1, r1), (d3, r3))
              c2 = ((d3, r3), (d2, r2))
-         in if abs (d1 - d2) <= t 
+         in if abs (d1 - d2) <= t
             then return d3
             else bisect1 $ if hasRoot c1 then c1 else c2
 
@@ -96,14 +96,14 @@ intersect d1 d2 accuracy n path1 path2
    | mag < 1e-15                    = Nothing
    | mag3 (nv1 `cross3` nv2) * r <= accuracy = Just (d1, d2)
        -- Assumes that sin (accuracy/r) == accuracy/r
-   | otherwise = 
+   | otherwise =
       if abs d1a + abs d2a < abs d1b + abs d2b
          then intersect (d1 + d1a) (d2 + d2a) accuracy (pred n) path1 path2
          else intersect (d1 + d1b) (d2 + d2b) accuracy (pred n) path1 path2
    where
       (pt1, h1, _) = pathFunc path1 d1
       (pt2, h2, _) = pathFunc path2 d2
-      vectors :: Double -> Double -> Double 
+      vectors :: Double -> Double -> Double
                  -> (Vec3 Double, Vec3 Double)
       vectors lat lon b = (
           -- Unit vector of normal to surface at (lat,lon)
@@ -132,11 +132,11 @@ intersect d1 d2 accuracy n path1 path2
       d1b = gcDist gc1 nv1 nv3b * r
       d2b = gcDist gc2 nv2 nv3b * r
       -- Signed angle between v1 and v2, 
-      gcDist norm v1 v2 = 
-         let c = v1 `cross3` v2 
-         in (if c `dot3` norm < 0 then negate else id) $ atan2 (mag3 c) (v1 `dot3` v2) 
+      gcDist norm v1 v2 =
+         let c = v1 `cross3` v2
+         in (if c `dot3` norm < 0 then negate else id) $ atan2 (mag3 c) (v1 `dot3` v2)
       r = majorRadius $ ellipsoid pt1
-          
+
 {- Note on derivation of "intersect"
 
 The algorithm is a variant of the Newton-Raphson method, and shares its advantage
@@ -167,7 +167,7 @@ is taken as the basis for the next approximation.
 -}
 
 -- | A ray from a point heading in a straight line in 3 dimensions. 
-rayPath :: (Ellipsoid e) => 
+rayPath :: (Ellipsoid e) =>
    Geodetic e          -- ^ Start point.
    -> Double           -- ^ Bearing.
    -> Double           -- ^ Elevation.
@@ -181,7 +181,7 @@ rayPath pt1 bearing elevation = Path ray alwaysValid
             (dE,dN,dU) = transform3 (trans3 $ ecefMatrix lat long) delta  -- Direction of ray at result point.
             elevation2 = asin dU
             bearing2 = if dE == 0 && dN == 0 then bearing else atan2 dE dN  -- Allow for vertical elevation.
-            
+
       ecefMatrix lat long =   -- Transform matrix for vectors from (East, North, Up) to (X,Y,Z).
          ((negate sinLong, negate cosLong*sinLat, cosLong*cosLat),
               --    East X      North X               Up X
@@ -194,7 +194,7 @@ rayPath pt1 bearing elevation = Path ray alwaysValid
             cosLong = cos long
             sinLat = sin lat
             cosLat = cos lat
-      
+
       direction = (sinB*cosE, cosB*cosE, sinE)  -- Direction of ray in ENU
       delta = transform3 (ecefMatrix (latitude pt1) (longitude pt1)) direction  -- Convert to ECEF
       pt1' = geoToEarth pt1    -- ECEF of origin point.
@@ -202,7 +202,7 @@ rayPath pt1 bearing elevation = Path ray alwaysValid
       cosB = cos bearing
       sinE = sin elevation
       cosE = cos elevation
-      
+
 -- | Rhumb line: path following a constant course. Also known as a loxodrome.
 --
 -- The valid range stops a few arc-minutes short of the poles to ensure that the 
@@ -244,7 +244,7 @@ rhumbPath pt course = Path rhumb validity
       m0 = meridianRadius (ellipsoid pt) lat0
       a = majorRadius $ ellipsoid pt
       b = minorRadius $ ellipsoid pt
-   
+
 
 -- | A path following the line of latitude around the Earth eastwards.
 --
@@ -256,7 +256,7 @@ latitudePath pt = Path line alwaysValid
    where
       line distance = (pt2, pi/2, 0)
          where
-            pt2 = Geodetic 
+            pt2 = Geodetic
                (latitude pt) (longitude pt + distance / r)
                0 (ellipsoid pt)
       r = latitudeRadius (ellipsoid pt) (latitude pt)
